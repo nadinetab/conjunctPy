@@ -187,14 +187,7 @@ def plotvars(list_vars, var_labels, time_var, trange,
             
             s_idx = np.where( time_truncated == start )[0][0]
             e_idx = np.where( time_truncated == end )[0][0]
-        
-#         print(start, end)
-#         print(time_truncated[0])
-#         print(np.where( time_truncated == start )[0][0], 
-#               np.where( time_truncated == end )[0][0])
-        
-#        print(time_truncated[s_idx], time_truncated[e_idx])
-        
+                
             
     for i in range(N):
         ax = fig.add_subplot(N, 1, i + 1)
@@ -209,8 +202,6 @@ def plotvars(list_vars, var_labels, time_var, trange,
             alpha_range = np.arange(90, 0, step=-5).tolist()
             ax.legend(alpha_range, loc='best')
             
-    
-#     return time_var[s_idx:e_idx] # Debugging purposes        
     return s_idx, e_idx
 
         
@@ -262,11 +253,7 @@ def load_rbsp(dtrange, setprobe, bmodel='OP77Q', dataset='MagEphem',
         ect_path = '/Users/frootloops/Downloads/' + setprobe + '/'
     
     Year = dtrange[0].year
-    
-    # dstring1 = datetime.strftime(dtrange[0], '%Y%m%d')
-    # dstring1 = str(Year) + str(dtrange[0].month) + str(dtrange[0].day)
-    # dstring2 = str(Year) + str(dtrange[1].month) + str(dtrange[1].day)
-    
+        
     if dataset == 'MagEphem':
         file_path = ect_path + dataset + '/definitive/' + str(Year) + '/' 
     else:     
