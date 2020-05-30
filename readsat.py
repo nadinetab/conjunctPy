@@ -1,9 +1,8 @@
 """
 Nadine Tabucol
 
-- Read and plot Magnetic Ephemeric data from Van Allen Probes and 
+- Read and plot Magnetic Ephemeric and MagEIS flux data from RBSP and 
 POES data. 
-- Find magnetic conjunctions between the two satellites (in prog.)
 
 Last updated: 
 30 May 20
