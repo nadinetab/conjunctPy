@@ -694,29 +694,28 @@ def read_vap_ephem(trange, read_vars, probe, b_model,
 
     #### --- POES --- ####
     #### READING DATA
-def load_poes(dtrange, satIDs):
+def load_poes(dtrange, satIDs, file_type='default'):
     """
     Helper function for read_poes.
     Returns a list of POES files for specified spacecraft(s) over
     one year.
     
-    Kwargs:
-    
+    Kwargs: 
+        file_type : str, {'default', 'magephem'}
+            Specifies type of POES CDF file.
     Args:
-        dtrange: Time range as a tuple or list-like element where the 
-                 first element corresponds to the start date, and the 
-                 last element corresponds to the end date. Dates are in 
-                 datetime.datetime format. 
-        satIDs: List-like element indicating 
-                which spacecraft(s) to read. Must be names 
-                within the following list: [m01, m02, n15, n18, n19] 
-                corresponding to 'metop01', 'metop02', 'noaa15', 
-                'noaa18', and 'noaa19'.
+        dtrange : list-like 
+            Time range as a tuple or list-like element where the first element 
+            corresponds to the start date, and the last element corresponds to the 
+            end date. Dates are in datetime.datetime format. 
+        satIDs : list-like
+            List-like element indicating which spacecraft(s) to read. Must be names 
+            within the following list: [m01, m02, n15, n18, n19] corresponding to 
+            'metop01', 'metop02', 'noaa15', 'noaa18', and 'noaa19'.
         
     """
     
-    poes_path = '/data1/big/SATELLITE/noaa_w/poes_seth/'
-#     poes_path = '/Users/frootloops/Downloads/poes/'
+    base_path = '/data1/big/SATELLITE/noaa_w/poes_seth/'
     sat_dict = {'m01':'metop01', 'm02':'metop02', 
                'n15':'noaa15', 'n18':'noaa18', 'n19':'noaa19'}
     
@@ -733,7 +732,10 @@ def load_poes(dtrange, satIDs):
     
     for sc in satIDs:
         
-        file_path = poes_path + sat_dict[sc] + '/'
+        file_path = base_path + sat_dict[sc] + '/'
+        
+        if file_type == 'magephem':
+            file_path = base_path + 'magephem/'
 
         while d <= end_date:
 
