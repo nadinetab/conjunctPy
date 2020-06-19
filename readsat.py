@@ -900,14 +900,17 @@ def check_poes_file(files_list):
 def poes_data(var_name, flist, tolerance = 9.9e36):
     """    
     Kwargs: 
-        tolerance: Either a float (default, value = 9.9e36) to represent a fill value 
-                   or a tuple that represents the upper and lower bounds of the 
-                   variable, INCLUSIVE. 
-                   For L var(s), tuple (1, 7) would typically be passed in.
-                   For MLT var(s), tuple (0, 24) would be passed in.
+        tolerance : float or list-like
+                 Either a float (default, value = 9.9e36) to represent a fill value 
+                 or a tuple that represents the upper and lower bounds of the 
+                 variable, INCLUSIVE. 
+                 For L var(s), tuple (1, 7) would typically be passed in.
+                 For MLT var(s), tuple (0, 24) would be passed in.
     Args:
-        var_name: Name of variable to be passed in.
-        flist: List of files to read.
+        var_name : str
+                Name of variable to be passed in.
+        flist : list-like
+                List of files to read.
     """
     
     automask = False # Issue 206 in netCDF4 github
@@ -916,7 +919,6 @@ def poes_data(var_name, flist, tolerance = 9.9e36):
     try:
         test_data = np.array(test_file[var_name])
     except TypeError:
-        #print(te)
         test_file.set_auto_maskandscale(False)
         automask = True
         pass
