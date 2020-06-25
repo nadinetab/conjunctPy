@@ -236,6 +236,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     
     final_cols = ['RBSP_SC', 'POES_SC', 'POES_DT', 
                   'POES_L', 'POES_MLT',
+                  'POES_MLAT', 'POES_ALPHA',
+                  'POES_ALPHA_EQ',
                   'RBSP_L', 'RBSP_MLT',
                   'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT']
     
@@ -273,28 +275,20 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                                           'POES_SC': p,
                                           'POES_DT': poes_data[p][0],
                                           'POES_L': poes_data[p][1],
-#                                           'POES_SIN': psin,
-#                                           'POES_COS': pcos,
-#                                           'POES_PHI': np.vectorize(np.arctan2)(psin, pcos) * (180.0/np.pi),
                                           'POES_MLT': mlt_poes,
                                           'POES_MLAT': mlat_poes,
-                                          'POES_ALPHA': alpha_90_poes,
-                                         }).set_index('POES_DT')
+                                          'POES_ALPHA': alpha_90_poes}).set_index('POES_DT')
             
             if alpha_method == 1: # B_ratio computed through POES MLAT
-                Be_over_Bl = conjunct['POES_ALPHA'].apply(lambda x: (np.cos(x) ** 6) / np.sqrt(1 + 3 * (np.sin(x) ** 2)) ) 
-                conjunct['POES_ALPHA_EQ'] = conjunct['POES_ALPHA'].apply(lambda x: np.arcsin(np.sqrt(Be_over_Bl * (np.sin(x*(np.pi/180.0))**2))) )                                     
+                conjunct['Be_over_Bl'] = (np.cos(conjunct['POES_ALPHA']) ** 6) / np.sqrt(1 + 3 * (np.sin(conjunct['POES_ALPHA']) ** 2))
+                conjunct['POES_ALPHA_EQ'] = np.arcsin(np.sqrt(conjunct['Be_over_Bl'] * (np.sin(conjunct['POES_ALPHA']*(np.pi/180.0))**2)))            
             if alpha_method == 2: # B_ratio obtained from POES MagEphem files
                 raise Exception("Equatorial pitch angle method 2 has not yet been implemented.")                                                                                 
-            
             
             rb_df = pd.DataFrame(data={'RBSP_DT': rb_dt, 
                                        'RBSP_L': rbsp_data[r][1][:, 0],
                                        'RBSP_SIN': np.array([np.sin(x) for x in rbsp_data[r][3]*(np.pi/180.0)]),
-                                       'RBSP_COS': np.array([np.cos(x) for x in rbsp_data[r][3]*(np.pi/180.0)])
-#                                        'RBSP_SIN': np.vectorize(np.sin)(rbsp_data[r][3] * (np.pi/180.0)), 
-#                                        'RBSP_COS': np.vectorize(np.cos)(rbsp_data[r][3] * (np.pi/180.0)) 
-                                        }).set_index('RBSP_DT')
+                                       'RBSP_COS': np.array([np.cos(x) for x in rbsp_data[r][3]*(np.pi/180.0)])}).set_index('RBSP_DT')
             
             # RBSP data resampled from 1min to 1 second resolution and reindexed according to POES time resolution
             # Timestamps will sometimes be off with POES by 1 second.
