@@ -247,11 +247,9 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
         
         rb_dt = rbsp_data[r][0].copy()
         rb_dt = np.array([rt.replace(tzinfo=None) for rt in rb_dt])
-#         rb_dt = np.vectorize(datetime.replace)(rb_dt, tzinfo=None)
         
         mlt_data = rbsp_data[r][2]
         cAngle = np.array([mltToAngle(elem) for elem in mlt_data])
-#         cAngle = np.vectorize(mltToAngle)(mlt_data)
         rbsp_data[r].append(cAngle)
         
         for p in poes_sc:
@@ -262,7 +260,6 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             mlat_poes = poes_data[p][3] * (np.pi/180.0)
             alpha_90_poes = poes_data[p][4]
             pcAngle = np.array([mltToAngle(elem) for elem in mlt_poes])
-#             pcAngle = np.vectorize(mltToAngle)(mlt_poes)
             poes_data[p].append(pcAngle)
             
             psin = np.vectorize(np.sin)(poes_data[p][3] * (np.pi/180.0))
@@ -282,6 +279,9 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             if alpha_method == 1: # B_ratio computed through POES MLAT
                 conjunct['Be_over_Bl'] = (np.cos(conjunct['POES_ALPHA']) ** 6) / np.sqrt(1 + 3 * (np.sin(conjunct['POES_ALPHA']) ** 2))
                 conjunct['POES_ALPHA_EQ'] = np.arcsin(np.sqrt(conjunct['Be_over_Bl'] * (np.sin(conjunct['POES_ALPHA']*(np.pi/180.0))**2)))            
+                # Convert equatorial pitch angles unit from radian to deg
+                conjunct['POES_ALPHA_EQ'] = conjunct['POES_ALPHA_EQ'] * (180.0 / np.pi)
+                
             if alpha_method == 2: # B_ratio obtained from POES MagEphem files
                 raise Exception("Equatorial pitch angle method 2 has not yet been implemented.")                                                                                 
             
@@ -302,7 +302,6 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             conjunct['RBSP_PHI'] = np.arctan2(rb_df_poes['RBSP_SIN'], rb_df_poes['RBSP_COS']) * (180.0 / np.pi)
             conjunct.loc[conjunct['RBSP_PHI'] < 0.0, 'RBSP_PHI'] += 360
             conjunct['RBSP_MLT'] = np.array([angleToMLT(i) for i in conjunct['RBSP_PHI'].values])
-#             conjunct['RBSP_MLT'] = np.vectorize(angleToMLT)(conjunct['RBSP_PHI'])
             
             # Compare L-values
             conjunct['L_DIFF'] = np.absolute(conjunct['RBSP_L'] - conjunct['POES_L'])
