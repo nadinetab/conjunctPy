@@ -133,7 +133,9 @@ def mltProximate(mlt1, mlt2, mltTol):
 
 
 def findConjunct(times, time_tol, l_tol, mlt_tol, 
-                    field, ltype = 'L', mlt_type='EDMAG_MLT', 
+                    field,
+                    alpha_tol = None,
+                    ltype = 'L', mlt_type='EDMAG_MLT', 
                     within = False,
                     alpha_method = 0,
                     savename='',
@@ -633,23 +635,23 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, poes_sc='m02', lowPitchAngle
     to computing MagEIS e-binned values.
     
     Kwargs:
-        poes_sc:
-        lowPitchAngleAvg:
-        poesTel:
+        poes_sc (str):
+        lowPitchAngleAvg (bool):
+        poesTel (str):
 
     Args:
-        mageis_conj_list: List of MagEIS conjunction points (column 'mageis_pts' from 
-                 findConjunction() output).
-        poes_time: POES conjunction point (column 'POES_DT' from findConjunction()
+        mageis_conj_list (Pandas Series or list-like): List of MagEIS conjunction points (column 'mageis_pts' from 
+                 findConjunct() output).
+        poes_time (Pandas Series or list-like): POES conjunction point (column 'POES_DT' from findConjunct()
                  output).
-        rbsc: Van Allen probe, 'rbspa' or 'rbspb', (column 'RBSP_SC' from 
-                 findConjunction()).
+        rbsc (str): Van Allen probe, 'rbspa' or 'rbspb', (column 'RBSP_SC' from 
+                 findConjunct()).
                  
     Output: 
-        time_array: 
-        mCumulative: Energy-integrated (wrt. POES' MEPED energy bins)
-    MagEIS electron flux, binned additionally by pitch-angle. 
-        poes_binned: 
+        time_array (1d-array): 
+        mCumulative (2d-array): Energy-integrated (wrt. POES' MEPED energy bins)
+                        MagEIS electron flux, binned additionally by pitch-angle. 
+        poes_binned (2d-array): 
 
     """
     
