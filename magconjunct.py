@@ -282,8 +282,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                                          }).set_index('POES_DT')
             
             if alpha_method == 1: # B_ratio computed through POES MLAT
-                Be_over_Bl = conjunct['POES_ALPHA'].apply(lambda x: ((np.cos(x)) ** 6)) / np.sqrt(1 + 3 * ((np.sin(x) ** 2))
-                conjunct['POES_ALPHA_EQ'] = conjunct['POES_ALPHA'].apply(lambda x: np.arcsin(np.sqrt(Be_over_Bl * (np.sin(x * (np.pi/180.0)) ** 2))) )                                     
+                Be_over_Bl = conjunct['POES_ALPHA'].apply(lambda x: (np.cos(x) ** 6) / np.sqrt(1 + 3 * (np.sin(x) ** 2)) ) 
+                conjunct['POES_ALPHA_EQ'] = conjunct['POES_ALPHA'].apply(lambda x: np.arcsin(np.sqrt(Be_over_Bl * (np.sin(x*(np.pi/180.0))**2))) )                                     
             if alpha_method == 2: # B_ratio obtained from POES MagEphem files
                 raise Exception("Equatorial pitch angle method 2 has not yet been implemented.")                                                                                 
             
