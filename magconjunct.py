@@ -259,7 +259,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             print((r, p))
                         
             mlt_poes = poes_data[p][2]
-            mlat_poes = poes_data[p][3]
+            mlat_poes = poes_data[p][3] 
             alpha_90_poes = poes_data[p][4]
             pcAngle = np.array([mltToAngle(elem) for elem in mlt_poes])
             poes_data[p].append(pcAngle)
@@ -280,7 +280,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             
             if alpha_method == 1: # B_ratio computed through POES MLAT
                 conjunct['Be_over_Bl'] = (np.cos(conjunct['POES_MLAT'] * (np.pi/180.0)) ** 6) / np.sqrt(1 + 3 * (np.sin(conjunct['POES_MLAT'] * (np.pi/180.0)) ** 2))
-                conjunct['POES_ALPHA_EQ'] = np.arcsin(np.sqrt(conjunct['Be_over_Bl'] * (np.sin(conjunct['POES_ALPHA']*(np.pi/180.0))**2)))            
+                conjunct['POES_ALPHA_EQ'] = np.arcsin(np.sqrt(conjunct['Be_over_Bl'] * (np.sin(conjunct['POES_ALPHA']*(np.pi/180.0))**2)))
                 # Convert equatorial pitch angles unit from radian to deg
                 conjunct['POES_ALPHA_EQ'] = conjunct['POES_ALPHA_EQ'] * (180.0 / np.pi)
                 
