@@ -949,7 +949,11 @@ def poes_data(var_name, flist, tolerance = 9.9e36):
         if automask:
             poes_file.set_auto_maskandscale(False)
         
-        var_data = poes_file.variables[var_name][:]
+        try: 
+            var_data = poes_file.variables[var_name][:]
+        except:
+            print(var_name)
+            continue
         poes_file.close()
                 
         var_array = np.append(var_array, var_data.data, axis=0)
@@ -959,6 +963,7 @@ def poes_data(var_name, flist, tolerance = 9.9e36):
             if type(tolerance) in ['float', 'np.float32', 'float32'] and type(var_data.fill_value) in ['np.float32', 'float32']:
                 tolerance = var_data.fill_value
         except:
+            print(var_name)
             continue
             
     # Since we appended each file's variable data to var_array
