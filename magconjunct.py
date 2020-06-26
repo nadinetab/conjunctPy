@@ -259,7 +259,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             print((r, p))
                         
             mlt_poes = poes_data[p][2]
-            mlat_poes = poes_data[p][3] * (np.pi/180.0)
+            mlat_poes = poes_data[p][3]
             alpha_90_poes = poes_data[p][4]
             pcAngle = np.array([mltToAngle(elem) for elem in mlt_poes])
             poes_data[p].append(pcAngle)
