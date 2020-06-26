@@ -1008,6 +1008,3 @@ def poes_data(var_name, flist, tolerance = 9.9e36):
             var_array[null_idx] = np.nan
         
     return var_array
-
-
-
