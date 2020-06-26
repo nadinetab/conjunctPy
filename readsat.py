@@ -959,6 +959,7 @@ def poes_data(var_name, flist, tolerance = 9.9e36):
             if type(tolerance) in ['float', 'np.float32', 'float32'] and type(var_data.fill_value) in ['np.float32', 'float32']:
                 tolerance = var_data.fill_value
         except:
+            print(var_name)
             continue
             
     # Since we appended each file's variable data to var_array
