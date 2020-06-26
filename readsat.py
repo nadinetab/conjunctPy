@@ -1,8 +1,9 @@
 """
 Nadine Tabucol
 
-- Read and plot Magnetic Ephemeric and MagEIS flux data from RBSP and 
+- Read and plot Magnetic Ephemeric data from Van Allen Probes and 
 POES data. 
+- Find magnetic conjunctions between the two satellites (in prog.)
 
 Last updated: 
 30 May 20
@@ -186,7 +187,14 @@ def plotvars(list_vars, var_labels, time_var, trange,
             
             s_idx = np.where( time_truncated == start )[0][0]
             e_idx = np.where( time_truncated == end )[0][0]
-                
+        
+#         print(start, end)
+#         print(time_truncated[0])
+#         print(np.where( time_truncated == start )[0][0], 
+#               np.where( time_truncated == end )[0][0])
+        
+#        print(time_truncated[s_idx], time_truncated[e_idx])
+        
             
     for i in range(N):
         ax = fig.add_subplot(N, 1, i + 1)
@@ -201,6 +209,8 @@ def plotvars(list_vars, var_labels, time_var, trange,
             alpha_range = np.arange(90, 0, step=-5).tolist()
             ax.legend(alpha_range, loc='best')
             
+    
+#     return time_var[s_idx:e_idx] # Debugging purposes        
     return s_idx, e_idx
 
         
@@ -252,7 +262,11 @@ def load_rbsp(dtrange, setprobe, bmodel='OP77Q', dataset='MagEphem',
         ect_path = '/Users/frootloops/Downloads/' + setprobe + '/'
     
     Year = dtrange[0].year
-        
+    
+    # dstring1 = datetime.strftime(dtrange[0], '%Y%m%d')
+    # dstring1 = str(Year) + str(dtrange[0].month) + str(dtrange[0].day)
+    # dstring2 = str(Year) + str(dtrange[1].month) + str(dtrange[1].day)
+    
     if dataset == 'MagEphem':
         file_path = ect_path + dataset + '/definitive/' + str(Year) + '/' 
     else:     
@@ -694,28 +708,29 @@ def read_vap_ephem(trange, read_vars, probe, b_model,
 
     #### --- POES --- ####
     #### READING DATA
-def load_poes(dtrange, satIDs, file_type='default'):
+def load_poes(dtrange, satIDs):
     """
     Helper function for read_poes.
     Returns a list of POES files for specified spacecraft(s) over
     one year.
     
-    Kwargs: 
-        file_type : str, {'default', 'magephem'}
-            Specifies type of POES CDF file.
+    Kwargs:
+    
     Args:
-        dtrange : list-like 
-            Time range as a tuple or list-like element where the first element 
-            corresponds to the start date, and the last element corresponds to the 
-            end date. Dates are in datetime.datetime format. 
-        satIDs : list-like
-            List-like element indicating which spacecraft(s) to read. Must be names 
-            within the following list: [m01, m02, n15, n18, n19] corresponding to 
-            'metop01', 'metop02', 'noaa15', 'noaa18', and 'noaa19'.
+        dtrange: Time range as a tuple or list-like element where the 
+                 first element corresponds to the start date, and the 
+                 last element corresponds to the end date. Dates are in 
+                 datetime.datetime format. 
+        satIDs: List-like element indicating 
+                which spacecraft(s) to read. Must be names 
+                within the following list: [m01, m02, n15, n18, n19] 
+                corresponding to 'metop01', 'metop02', 'noaa15', 
+                'noaa18', and 'noaa19'.
         
     """
     
-    base_path = '/data1/big/SATELLITE/noaa_w/poes_seth/'
+    poes_path = '/data1/big/SATELLITE/noaa_w/poes_seth/'
+#     poes_path = '/Users/frootloops/Downloads/poes/'
     sat_dict = {'m01':'metop01', 'm02':'metop02', 
                'n15':'noaa15', 'n18':'noaa18', 'n19':'noaa19'}
     
@@ -732,10 +747,7 @@ def load_poes(dtrange, satIDs, file_type='default'):
     
     for sc in satIDs:
         
-        file_path = base_path + sat_dict[sc] + '/'
-        
-        if file_type == 'magephem':
-            file_path = base_path + 'magephem/'
+        file_path = poes_path + sat_dict[sc] + '/'
 
         while d <= end_date:
 
@@ -900,17 +912,14 @@ def check_poes_file(files_list):
 def poes_data(var_name, flist, tolerance = 9.9e36):
     """    
     Kwargs: 
-        tolerance : float or list-like
-                 Either a float (default, value = 9.9e36) to represent a fill value 
-                 or a tuple that represents the upper and lower bounds of the 
-                 variable, INCLUSIVE. 
-                 For L var(s), tuple (1, 7) would typically be passed in.
-                 For MLT var(s), tuple (0, 24) would be passed in.
+        tolerance: Either a float (default, value = 9.9e36) to represent a fill value 
+                   or a tuple that represents the upper and lower bounds of the 
+                   variable, INCLUSIVE. 
+                   For L var(s), tuple (1, 7) would typically be passed in.
+                   For MLT var(s), tuple (0, 24) would be passed in.
     Args:
-        var_name : str
-                Name of variable to be passed in.
-        flist : list-like
-                List of files to read.
+        var_name: Name of variable to be passed in.
+        flist: List of files to read.
     """
     
     automask = False # Issue 206 in netCDF4 github
@@ -919,6 +928,7 @@ def poes_data(var_name, flist, tolerance = 9.9e36):
     try:
         test_data = np.array(test_file[var_name])
     except TypeError:
+        #print(te)
         test_file.set_auto_maskandscale(False)
         automask = True
         pass
@@ -949,7 +959,11 @@ def poes_data(var_name, flist, tolerance = 9.9e36):
         if automask:
             poes_file.set_auto_maskandscale(False)
         
-        var_data = poes_file.variables[var_name][:]
+        try:
+            var_data = poes_file.variables[var_name][:]
+        except:
+            print(var_name)
+            continue
         poes_file.close()
                 
         var_array = np.append(var_array, var_data.data, axis=0)
@@ -1004,6 +1018,3 @@ def poes_data(var_name, flist, tolerance = 9.9e36):
             var_array[null_idx] = np.nan
         
     return var_array
-
-
-
