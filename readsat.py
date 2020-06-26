@@ -333,7 +333,6 @@ def read_mageis(trange, read_vars, probe, get_latest = True):
             print('Error: ', e)
             raise
             
-            
         # Get array of datetimes
         #   NB: 'Epoch' dtype is 'CDF_EPOCH' 
         #   Equivalent to milliseconds since Year 0.
@@ -740,8 +739,11 @@ def load_poes(dtrange, satIDs, file_type='default'):
         while d <= end_date:
 
             datestring = d.strftime('%Y%m%d')
-
-            file_list = glob(file_path+'*'+sc+'_'+datestring+'_proc.nc')
+            
+            if file_type == 'magephem':
+                file_list = glob(file_path+'*'+datestring+'.cdf')
+            else:
+                file_list = glob(file_path+'*'+sc+'_'+datestring+'_proc.nc')
             satfiles.extend(file_list)
 
             d += timedelta(days = 1)
@@ -751,30 +753,33 @@ def load_poes(dtrange, satIDs, file_type='default'):
 
     return satfiles
 
-def read_poes(trange, sat_IDs, read_vars, null_vals=[], filterL=True):
+def read_poes(trange, sat_IDs, read_vars, null_vals=[], filterL=True, fileType='default'):
     """
     
     Kwargs:
-        null_vals (list-like):  Tolerance associated with each variable. If empty,
-                                default is 9.9e36 for each variable. Pass in None 
-                                to a specific variable to assume default tolerance
-                                value. 
-        filterL (bool):  If true, every L-value > 7 and every MLT-value > 24 and 
-                         < 0 is omitted. Default is True.
+        null_vals : list-like  
+            Tolerance associated with each variable. If empty, default is 9.9e36 for 
+            each variable. Pass in None to a specific variable to assume 
+            default tolerance value. 
+        filterL : bool, default is 'True'
+            If true, every L-value > 7 and every MLT-value > 24 and < 0 is omitted. 
+        fileType : str  {'default', 'magephem'} 
+            Specifies type of POES CDF file
     
     Args:
-        trange (list-like): Time range as a tuple or list-like element where the 
-                            first element corresponds to the start date, and the 
-                            last element corresponds to the end date. Dates are in 
-                            datetime.datetime format. 
-        sat_IDs (list-like): A tuple or other list-like element indicating 
-                             which spacecraft(s) to read. Must be names 
-                             within the following list: [m01, m02, n15, n18, n19] 
-                             corresponding to 'metop01', 'metop02', 'noaa15', 
-                             'noaa18', and 'noaa19'.
-        read_vars (list): List of variables to read.
+        trange : list-like
+            Time range as a tuple or list-like element where the first element corresponds 
+            to the start date, and the last element corresponds to the end date. 
+            Dates are in datetime.datetime format. 
+        sat_IDs : list-like
+            A tuple or other list-like element indicating which spacecraft(s) to read. 
+            Must be names within the following list: [m01, m02, n15, n18, n19] 
+            corresponding to 'metop01', 'metop02', 'noaa15', 'noaa18', and 'noaa19'.
+        read_vars : list
+            List of variables to read.
     """
-
+    # Valid parameter inputs
+    assert fileType in ['magephem', 'default', None], "Valid inputs for 'fileType' are {'magephem', 'default', None}".
     
     # Parameter defaults: fill values
     default_null = 9.69e+36
@@ -802,46 +807,80 @@ def read_poes(trange, sat_IDs, read_vars, null_vals=[], filterL=True):
         time1 = datetime.strptime(trange[0], '%Y-%m-%d')
         time2 = datetime.strptime(trange[1], '%Y-%m-%d')
                 
-        filelist = load_poes([time1, time2], sat_IDs) # Generate list to read
-
+        filelist = load_poes([time1, time2], sat_IDs, file_type=fileType) # Generate list to read
     else:
         print("`trange` must be a 2-element list/array-like of strings \
               in the format `YYYY-mm-dd`.")
         return
     
-    readable, unread = check_poes_file(filelist)
+    if fileType == 'default':
+        readable, unread = check_poes_file(filelist)
+    else: # MagEphem files
+        readable = filelist
+        unread = None
     
     # Generate timestamps
-#     timestamps = poes_datetime(readable) # 1D array of timestamps associated with
-#                                          # 'readable' list of POES files.
     dtimes = np.empty(shape=(1,))
-#     dtimelist = []
-    
-    for f in readable:
-        
-        poes_file = ncdf.Dataset(f)
-        time_var = np.array(poes_file['time'])
-        time_data = [(datetime.utcfromtimestamp(t)).replace(microsecond=0) for t in time_var/1000.0]
-#       # The line above replaces the two lines of code below.
-#         time_data = np.vectorize(datetime.utcfromtimestamp)(time_var/1000.0)
-#         time_data = np.vectorize(datetime.replace)(time_data, microsecond=0)
-        time_data = np.array(list(filter(None, time_data)))
-        dtimes = np.append(dtimes, time_data, axis=0)
-        poes_file.close()
-        
-#    dtimelist = np.array(dtimelist).reshape(-1,)
-    timestamps = dtimes[1:]
+
+    if fileType == 'magephem': # Reading cdf files
        
-    data_list = [timestamps] # List holding all variables and assoc. timestamps
+        data_list = []
         
-    # Read variable data: for each variable. There are separate files list 
-    # for each spacecraft. 
-#     for v in read_vars:
-#     # Replaced by list comprehension below.
-#         v_idx = read_vars.index(v)
-#         data_list.append(poes_data(v, readable, tolerance = null_vals[v_idx]))
-    vardata = [poes_data(read_vars[i], readable, tolerance=null_vals[i]) for i in range(0, len(read_vars))]
-    data_list.extend(vardata)
+        for f in readable:
+            try:
+                cfile = cdflib.CDF(f)
+            except Exception as e:
+                print('Unable to read file: ', f)
+                print('Error: ', e)
+                raise
+            
+            # Get array of datetimes
+            cepoch = cfile.varget('Epoch')
+            csplit = cdflib.cdfepoch.breakdown(cepoch)
+            time_data = np.array([datetime(*c).replace(microsecond=0) for c in csplit])
+            
+            # Append datetimes to data list
+            if data_list:
+                data_list[0] = np.concatenate((data_list[0], time_data), axis=0)
+            else:
+                data_list.append(time_data)
+            
+            # Get other variable data
+            for var in read_vars:
+                var_array = cfile.varget(var)
+                var_idx = read_vars.index(var)
+                
+                if var_array: # If no error with varget
+                    if len(data_list) > var_idx + 1:
+                        data_list[var_idx + 1] = np.concatenate((data_list[var_idx + 1], var_array), axis = 0)
+                    else: 
+                        data_list.append(var_array)
+                
+            cfile.close()
+            
+    else: # Reading ncdf files
+        for f in readable:
+            poes_file = ncdf.Dataset(f)
+            time_var = np.array(poes_file['time'])
+            time_data = [(datetime.utcfromtimestamp(t)).replace(microsecond=0) for t in time_var/1000.0]
+            time_data = np.array(list(filter(None, time_data)))
+            dtimes = np.append(dtimes, time_data, axis=0)
+            poes_file.close()
+        
+    #    dtimelist = np.array(dtimelist).reshape(-1,)
+        timestamps = dtimes[1:]
+
+        data_list = [timestamps] # List holding all variables and assoc. timestamps
+
+        # Read variable data: for each variable. There are separate files list 
+        # for each spacecraft. 
+    #     for v in read_vars:
+    #     # Replaced by list comprehension below.
+    #         v_idx = read_vars.index(v)
+    #         data_list.append(poes_data(v, readable, tolerance = null_vals[v_idx]))
+    
+        vardata = [poes_data(read_vars[i], readable, tolerance=null_vals[i]) for i in range(0, len(read_vars))]
+        data_list.extend(vardata)
     
     return data_list, unread
     
