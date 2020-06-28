@@ -141,7 +141,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                     savename='',
                     save=False):
     """
-    Notes: Add plotting capability.
+    Notes: alpha_method = 1 doesn't work as well.
     
     Kwargs:
         ltype (str): Choose specific 'L' variable to read from RBSP.
@@ -223,10 +223,18 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     ### Read POES ###
     poes_sc = ['m02']  # Only 'm02' is available for now
 #     poes_sc = ['m01', 'm02', 'n15', 'n18', 'n19']
+    poes_var_names = ['L_IGRF', 'MLT', 'mag_lat_sat', 'meped_alpha_90_sat']
+    poes_get_eq = 'default'
+  
+    if alpha_method == 3: 
+        poes_var_names = poes_var_names + ['Beq', 'Blocal']
+        poes_get_eq = 'magephem'
+            
     poes_list = [rs.read_poes(trange=times,
                           sat_IDs=[i],
-                          read_vars=['L_IGRF', 'MLT', 'mag_lat_sat', 'meped_alpha_90_sat'],
-                          filterL=True)[0] for i in poes_sc]
+                          read_vars=poes_var_names,
+                          filterL=True,
+                          fileType=poes_get_eq)[0] for i in poes_sc]
     
     poes_data = dict(zip(poes_sc, poes_list))
     
