@@ -779,7 +779,7 @@ def read_poes(trange, sat_IDs, read_vars, null_vals=[], filterL=True, fileType='
             List of variables to read.
     """
     # Valid parameter inputs
-    assert fileType in ['magephem', 'default', None], "Valid inputs for 'fileType' are {'magephem', 'default', None}".
+    assert fileType in ['magephem', 'default', None], ("Valid inputs for 'fileType' are {'magephem', 'default', None}")
     
     # Parameter defaults: fill values
     default_null = 9.69e+36
