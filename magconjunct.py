@@ -247,8 +247,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     final_cols = ['RBSP_SC', 'POES_SC', 'POES_DT', 
                   'POES_L', 'POES_MLT',
                   'POES_MLAT', 'POES_ALPHA',
-                  'POES_ALPHA_EQ',
-                  'RBSP_L', 'RBSP_MLT',
+                  'POES_ALPHA_EQ', 'RBSP_L', 'RBSP_MLT',
                   'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT']
     
     conjunctions = pd.DataFrame(columns = final_cols)
