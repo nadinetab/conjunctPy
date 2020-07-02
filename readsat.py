@@ -5,6 +5,12 @@ Nadine Tabucol
 POES data. 
 
 Last updated: 
+01 July 20:
+- Read POES MagEphem files
+- Possible future update: 
+    For new CDFlib ver. 0.3.10: cdflib.cdfepoch --> cdflib.epochs.CDFepoch. Would need to update 
+    reading and encoding Epochs routine for read_mageis()
+
 30 May 20
 - Added sorting functionality to load_rbsp() to ensure 
 retrieval of latest file.
@@ -741,7 +747,7 @@ def load_poes(dtrange, satIDs, file_type='default'):
             datestring = d.strftime('%Y%m%d')
             
             if file_type == 'magephem':
-                file_list = glob(file_path+'*'+datestring+'.cdf')
+                file_list = glob(file_path+'*'+sat_dict[sc]+'*'+datestring+'*.cdf')
             else:
                 file_list = glob(file_path+'*'+sc+'_'+datestring+'_proc.nc')
             satfiles.extend(file_list)
@@ -819,6 +825,7 @@ def read_poes(trange, sat_IDs, read_vars, null_vals=[], filterL=True, fileType='
         readable = filelist
         unread = None
     
+    
     # Generate timestamps
     dtimes = np.empty(shape=(1,))
 
@@ -835,26 +842,33 @@ def read_poes(trange, sat_IDs, read_vars, null_vals=[], filterL=True, fileType='
                 raise
             
             # Get array of datetimes
-            cepoch = cfile.varget('Epoch')
-            csplit = cdflib.cdfepoch.breakdown(cepoch)
+            cepoch = cfile.varget('Epoch').reshape(-1,1)
+            csplit = cdflib.epochs.CDFepoch.breakdown_epoch(cepoch)
             time_data = np.array([datetime(*c).replace(microsecond=0) for c in csplit])
             
             # Append datetimes to data list
             if data_list:
-                data_list[0] = np.concatenate((data_list[0], time_data), axis=0)
+                data_list[0] = np.concatenate((data_list[0], time_data.reshape(-1,1)), axis=0)
             else:
-                data_list.append(time_data)
-            
+                data_list.append(time_data.reshape(-1,1))
+                        
             # Get other variable data
             for var in read_vars:
-                var_array = cfile.varget(var)
+                try:
+                    var_array = cfile.varget(var)
+                except:
+                    var_array = np.nan
+                    raise Exception("Error reading " + var)
+                    
+                var_cols = var_array.shape[0] # Assumes columns correspond to first dimension        
                 var_idx = read_vars.index(var)
                 
-                if var_array: # If no error with varget
-                    if len(data_list) > var_idx + 1:
-                        data_list[var_idx + 1] = np.concatenate((data_list[var_idx + 1], var_array), axis = 0)
-                    else: 
-                        data_list.append(var_array)
+                # data_list[0] is time array
+                
+                if len(data_list) > var_idx + 1:
+                    data_list[var_idx + 1] = np.concatenate((data_list[var_idx + 1], var_array.reshape(-1,var_cols)), axis = 0)
+                else: 
+                    data_list.append(var_array.reshape(-1, var_cols))
                 
             cfile.close()
             
