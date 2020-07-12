@@ -247,7 +247,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
         poes_alpha_90_dict = dict(zip(poes_sc, [rs.read_poes(trange=times,
                                                 sat_IDs = [i],
                                                 read_vars = ['meped_alpha_90_sat'],
-                                                fileType='default')[0][1], for i in poes_sc]))
+                                                fileType='default')[0][1] for i in poes_sc]))
     else:
         poes_alpha_90_dict = dict(zip(poes_sc, [poes_list[i][4] for i in poes_sc]))
     
