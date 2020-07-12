@@ -141,7 +141,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                     savename='',
                     save=False):
     """
-    Notes: Add plotting capability.
+    Notes: alpha_method = 1 doesn't work as well.
     
     Kwargs:
         ltype (str): Choose specific 'L' variable to read from RBSP.
@@ -223,10 +223,33 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     ### Read POES ###
     poes_sc = ['m02']  # Only 'm02' is available for now
 #     poes_sc = ['m01', 'm02', 'n15', 'n18', 'n19']
+
+    poes_var_names = [l_name, mlt_name, lat_name, 'meped_alpha_90_sat']
+    
+    if alpha_method == 2:
+        l_name = 'lm'
+        mlt_name = 'mlt'
+        lat_name = 'mlat'
+        poes_get_eq = 'magephem'
+        poes_var_names = poes_var_names[:3] + ['beq', 'blocal']
+    else:
+        l_name = 'L_IGRF'
+        mlt_name = 'MLT'
+        lat_name = 'mag_lat_sat'
+        poes_get_eq = 'default'
+                    
     poes_list = [rs.read_poes(trange=times,
                           sat_IDs=[i],
-                          read_vars=['L_IGRF', 'MLT', 'mag_lat_sat', 'meped_alpha_90_sat'],
-                          filterL=True)[0] for i in poes_sc]
+                          read_vars=poes_var_names,
+                          filterL=True,
+                          fileType=poes_get_eq)[0] for i in poes_sc]
+    if alpha_method == 2: # Create a separate dictionary for MEPED local pitch angle values according to spacecraft
+        poes_alpha_90_dict = dict(zip(poes_sc, [rs.read_poes(trange=times,
+                                                sat_IDs = [i],
+                                                read_vars = ['meped_alpha_90_sat'],
+                                                fileType='default')[0][1], for i in poes_sc]))
+    else:
+        poes_alpha_90_dict = dict(zip(poes_sc, [poes_list[i][4] for i in poes_sc]))
     
     poes_data = dict(zip(poes_sc, poes_list))
     
@@ -239,8 +262,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     final_cols = ['RBSP_SC', 'POES_SC', 'POES_DT', 
                   'POES_L', 'POES_MLT',
                   'POES_MLAT', 'POES_ALPHA',
-                  'POES_ALPHA_EQ',
-                  'RBSP_L', 'RBSP_MLT',
+                  'POES_ALPHA_EQ', 'RBSP_L', 'RBSP_MLT',
                   'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT']
     
     conjunctions = pd.DataFrame(columns = final_cols)
@@ -260,7 +282,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                         
             mlt_poes = poes_data[p][2]
             mlat_poes = poes_data[p][3] 
-            alpha_90_poes = poes_data[p][4]
+            alpha_90_poes = poes_alpha_90_dict[p]
             pcAngle = np.array([mltToAngle(elem) for elem in mlt_poes])
             poes_data[p].append(pcAngle)
             
@@ -277,15 +299,19 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                                           'POES_MLT': mlt_poes,
                                           'POES_MLAT': mlat_poes,
                                           'POES_ALPHA': alpha_90_poes}).set_index('POES_DT')
-            
-            if alpha_method == 1: # B_ratio computed through POES MLAT
-                conjunct['Be_over_Bl'] = (np.cos(conjunct['POES_MLAT'] * (np.pi/180.0)) ** 6) / np.sqrt(1 + 3 * (np.sin(conjunct['POES_MLAT'] * (np.pi/180.0)) ** 2))
+                            
+            if alpha_method > 1: # Compute POES equatorial pitch angle
+              
+                if alpha_method == 1: # B_ratio computed through POES MLAT
+                    conjunct['Be_over_Bl'] = (np.cos(conjunct['POES_MLAT'] * (np.pi/180.0)) ** 6) / np.sqrt(1 + 3 * (np.sin(conjunct['POES_MLAT'] * (np.pi/180.0)) ** 2))    
+                else: # B_ratio obtained from POES MagEphem files
+                    poes_beq = poes_data[p][4]
+                    poes_bloc = poes_data[p][5]
+                    conjunct['Be_over_Bl'] = np.divide(arr1 = poes_beq, arr2 = poes_bloc)                                                                            
+
                 conjunct['POES_ALPHA_EQ'] = np.arcsin(np.sqrt(conjunct['Be_over_Bl'] * (np.sin(conjunct['POES_ALPHA']*(np.pi/180.0))**2)))
                 # Convert equatorial pitch angles unit from radian to deg
                 conjunct['POES_ALPHA_EQ'] = conjunct['POES_ALPHA_EQ'] * (180.0 / np.pi)
-                
-            if alpha_method == 2: # B_ratio obtained from POES MagEphem files
-                raise Exception("Equatorial pitch angle method 2 has not yet been implemented.")                                                                                 
             
             rb_df = pd.DataFrame(data={'RBSP_DT': rb_dt, 
                                        'RBSP_L': rbsp_data[r][1][:, 0],
@@ -340,11 +366,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             
             mg_df['MAGEIS_L'] = rb_df_mageis['RBSP_L']
             mg_df['MAGEIS_MLT'] = rb_df_mageis['RBSP_MLT']   
-            
-#             if r == 'rbspa':
-#                 debug_rb_mageis = mg_df
-
-            
+                        
             for row in mageis_conjunct.itertuples():
                 
                 if within:
