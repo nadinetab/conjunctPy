@@ -307,11 +307,16 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                 else: # B_ratio obtained from POES MagEphem files
                     poes_beq = poes_data[p][4]
                     poes_bloc = poes_data[p][5]
-                    conjunct['Be_over_Bl'] = np.divide(arr1 = poes_beq, arr2 = poes_bloc)                                                                            
+                    conjunct['Be_over_Bl'] = np.divide(arr1 = poes_beq, arr2 = poes_bloc)
+                    
+                input_arc = np.multiply(np.sqrt(conjunct['Be_over_Bl']), np.sin(np.multiply(conjunct['POES_ALPHA'], np.pi/180.0)))
+                conjunct['POES_ALPHA_EQ'] = np.arcsin(input_arc) * (180.0 / np.pi) # In degrees
+                greater_idx = np.where(conjunct['POES_ALPHA'] > 90.0)[0]
+                conjunct['POES_ALPHA_EQ'][greater_idx] -= 180.0
 
-                conjunct['POES_ALPHA_EQ'] = np.arcsin(np.sqrt(conjunct['Be_over_Bl'] * (np.sin(conjunct['POES_ALPHA']*(np.pi/180.0))**2)))
+#                 conjunct['POES_ALPHA_EQ'] = np.arcsin(np.sqrt(conjunct['Be_over_Bl'] * (np.sin(conjunct['POES_ALPHA']*(np.pi/180.0))**2)))
                 # Convert equatorial pitch angles unit from radian to deg
-                conjunct['POES_ALPHA_EQ'] = conjunct['POES_ALPHA_EQ'] * (180.0 / np.pi)
+#                 conjunct['POES_ALPHA_EQ'] = conjunct['POES_ALPHA_EQ'] * (180.0 / np.pi)
             
             rb_df = pd.DataFrame(data={'RBSP_DT': rb_dt, 
                                        'RBSP_L': rbsp_data[r][1][:, 0],
