@@ -224,6 +224,11 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     poes_sc = ['m02']  # Only 'm02' is available for now
 #     poes_sc = ['m01', 'm02', 'n15', 'n18', 'n19']
 
+    # Var inits
+    l_name = 'L_IGRF'
+    mlt_name = 'MLT'
+    lat_name = 'mag_lat_sat'
+    poes_get_eq = 'default'
     poes_var_names = [l_name, mlt_name, lat_name, 'meped_alpha_90_sat']
     
     if alpha_method == 2:
@@ -232,11 +237,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
         lat_name = 'mlat'
         poes_get_eq = 'magephem'
         poes_var_names = poes_var_names[:3] + ['beq', 'blocal']
-    else:
-        l_name = 'L_IGRF'
-        mlt_name = 'MLT'
-        lat_name = 'mag_lat_sat'
-        poes_get_eq = 'default'
+
                     
     poes_list = [rs.read_poes(trange=times,
                           sat_IDs=[i],
