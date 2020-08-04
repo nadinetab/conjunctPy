@@ -842,33 +842,48 @@ def read_poes(trange, sat_IDs, read_vars, null_vals=[], filterL=True, fileType='
                 raise
             
             # Get array of datetimes
+#             cepoch = cfile.varget('Epoch').reshape(-1,1)
             cepoch = cfile.varget('Epoch').reshape(-1,1)
             csplit = cdflib.epochs.CDFepoch.breakdown_epoch(cepoch)
             time_data = np.array([datetime(*c).replace(microsecond=0) for c in csplit])
             
             # Append datetimes to data list
             if data_list:
-                data_list[0] = np.concatenate((data_list[0], time_data.reshape(-1,1)), axis=0)
+#                 data_list[0] = np.concatenate((data_list[0], time_data.reshape(-1,1)), axis=0)
+                data_list[0] = np.concatenate((data_list[0], time_data), axis=0)
             else:
-                data_list.append(time_data.reshape(-1,1))
+#                 data_list.append(time_data.reshape(-1,1))
+                data_list.append(time_data)
                         
             # Get other variable data
             for var in read_vars:
                 try:
                     var_array = cfile.varget(var)
                 except:
+                    cfile.close()
                     var_array = np.nan
                     raise Exception("Error reading " + var)
+                   
+                # Assumes columns correspond to first dimension (num cols >> num rows)
+                var_cols, var_rows = var_array.shape 
+                if var_rows > var_cols: # Switch axes
+                    var_array = np.swapaxes(var_array, 0, 1)
                     
-                var_cols = var_array.shape[0] # Assumes columns correspond to first dimension        
+                    if var_cols == 1:
+                        var_array = var_array.flatten()
+                        
                 var_idx = read_vars.index(var)
                 
                 # data_list[0] is time array
                 
                 if len(data_list) > var_idx + 1:
-                    data_list[var_idx + 1] = np.concatenate((data_list[var_idx + 1], var_array.reshape(-1,var_cols)), axis = 0)
+                    if var_cols > 1:
+                        data_list[var_idx + 1] = np.concatenate((data_list[var_idx + 1], var_array), axis = 0)
+                    else: 
+                        data_list[var_idx + 1] = np.concatenate((data_list[var_idx + 1], var_array))
+                                            
                 else: 
-                    data_list.append(var_array.reshape(-1, var_cols))
+                    data_list.append(var_array)
                 
             cfile.close()
             
