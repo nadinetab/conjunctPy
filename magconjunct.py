@@ -5,7 +5,7 @@ Nadine Tabucol
 Find and plot magnetic conjunctions between RBSP and "each" (only 'm02' as of 29-03-2020)
 POES spacecraft. 
 
-Functions:
+Functions: 
 - findConjunct
 - viewConjunct
 - plotConjunct
@@ -313,20 +313,24 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                 print(poes_data[p][1])
                 raise
                             
-            if alpha_method > 1: # Compute POES equatorial pitch angle
+            if alpha_method >= 1: # Compute POES equatorial pitch angle
               
                 if alpha_method == 1: # B_ratio computed through POES MLAT
                     conjunct['Be_over_Bl'] = (np.cos(conjunct['POES_MLAT'] * (np.pi/180.0)) ** 6) / np.sqrt(1 + 3 * (np.sin(conjunct['POES_MLAT'] * (np.pi/180.0)) ** 2))    
+                
                 else: # B_ratio obtained from POES MagEphem files
                     poes_beq = poes_data[p][4]
                     poes_bloc = poes_data[p][5]
                     conjunct['Be_over_Bl'] = np.divide(poes_beq, poes_bloc)
-                    
+                
                 input_arc = np.multiply(np.sqrt(conjunct['Be_over_Bl']), np.sin(np.multiply(conjunct['POES_ALPHA'], np.pi/180.0)))
-                conjunct['POES_ALPHA_EQ'] = np.arcsin(input_arc) * (180.0 / np.pi) # In degrees
+                alpha_equator = np.arcsin(input_arc) * (180.0 / np.pi) # In degrees
                 greater_idx = np.where(conjunct['POES_ALPHA'] > 90.0)[0]
-                # ERROR
-                conjunct.loc[greater_idx, 'POES_ALPHA_EQ'] = conjunct.iloc[greater_idx, 'POES_ALPHA_EQ'].subtract(180.0)
+                alpha_equator[greater_idx] = 180.0 - alpha_equator[greater_idx]
+                conjunct['POES_ALPHA_EQ'] = alpha_equator
+                
+#                 # ERROR
+#                 conjunct.loc[greater_idx, 'POES_ALPHA_EQ'] = conjunct.iloc[greater_idx, 'POES_ALPHA_EQ'].subtract(180.0)
 
 #                 conjunct['POES_ALPHA_EQ'] = np.arcsin(np.sqrt(conjunct['Be_over_Bl'] * (np.sin(conjunct['POES_ALPHA']*(np.pi/180.0))**2)))
                 # Convert equatorial pitch angles unit from radian to deg
