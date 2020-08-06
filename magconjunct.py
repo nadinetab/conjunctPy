@@ -11,6 +11,10 @@ Functions:
 - plotConjunct
 
 Last updated: 
+05 August 2020:
+- Get POES equatorial pitch angle from POES MagEphem ('OP77Q') files in findConjunct()
+- Working on: Get POES equatorial pitch angle through MLAT in findConjunct()
+
 18 May 2020:
 - Finished debugging and rewriting findConjunct()
 - Finished debugging and testing compare_all_flux() and 
@@ -51,12 +55,14 @@ import readsat as rs
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, timezone
 from dateutil.tz import tzutc
-import warnings
 from pandas.plotting import register_matplotlib_converters
 from scipy.integrate import trapz
 from numpy import errstate,isneginf,array
 
-# warnings.simplefilter("error")
+# # DEBUG - COMMENT OUT
+# import warnings
+# warnings.filterwarnings(action = "error")
+# # END DEBUG
 
 ### FIND CONJUNCTIONS ###
 # MLT Conversion to Clock Angle
@@ -291,7 +297,6 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             mlat_poes = poes_data[p][3]
             alpha_90_poes = poes_alpha_90_dict[p]
             
-            print(alpha_90_poes.shape)
             pcAngle = np.array([mltToAngle(elem) for elem in mlt_poes])
             poes_data[p].append(pcAngle)
             
@@ -301,17 +306,13 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             rsin = np.vectorize(np.sin)(rbsp_data[r][3] * (np.pi/180.0))
             rcos = np.vectorize(np.cos)(rbsp_data[r][3] * (np.pi/180.0))
             
-            try:
-                conjunct = pd.DataFrame(data={'RBSP_SC': r, 
-                                              'POES_SC': p,
-                                              'POES_DT': poes_data[p][0],
-                                              'POES_L': poes_data[p][1],
-                                              'POES_MLT': mlt_poes,
-                                              'POES_MLAT': mlat_poes,
-                                              'POES_ALPHA': alpha_90_poes}).set_index('POES_DT')
-            except:
-                print(poes_data[p][1])
-                raise
+            conjunct = pd.DataFrame(data={'RBSP_SC': r, 
+                                          'POES_SC': p,
+                                          'POES_DT': poes_data[p][0],
+                                          'POES_L': poes_data[p][1],
+                                          'POES_MLT': mlt_poes,
+                                          'POES_MLAT': mlat_poes,
+                                          'POES_ALPHA': alpha_90_poes}).set_index('POES_DT')
                             
             if alpha_method >= 1: # Compute POES equatorial pitch angle
               
@@ -324,18 +325,14 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                     conjunct['Be_over_Bl'] = np.divide(poes_beq, poes_bloc)
                 
                 input_arc = np.multiply(np.sqrt(conjunct['Be_over_Bl']), np.sin(np.multiply(conjunct['POES_ALPHA'], np.pi/180.0)))
-                alpha_equator = np.arcsin(input_arc) * (180.0 / np.pi) # In degrees
-                greater_idx = np.where(conjunct['POES_ALPHA'] > 90.0)[0]
-                alpha_equator[greater_idx] = 180.0 - alpha_equator[greater_idx]
-                conjunct['POES_ALPHA_EQ'] = alpha_equator
                 
-#                 # ERROR
-#                 conjunct.loc[greater_idx, 'POES_ALPHA_EQ'] = conjunct.iloc[greater_idx, 'POES_ALPHA_EQ'].subtract(180.0)
-
-#                 conjunct['POES_ALPHA_EQ'] = np.arcsin(np.sqrt(conjunct['Be_over_Bl'] * (np.sin(conjunct['POES_ALPHA']*(np.pi/180.0))**2)))
-                # Convert equatorial pitch angles unit from radian to deg
-#                 conjunct['POES_ALPHA_EQ'] = conjunct['POES_ALPHA_EQ'] * (180.0 / np.pi)
-            
+                alpha_equator_deg = np.arcsin(input_arc) * (180.0 / np.pi) # In degrees
+                
+                greater_idx = np.where(conjunct['POES_ALPHA'] > 90.0)[0]
+                
+                alpha_equator_deg[greater_idx] = 180.0 - alpha_equator_deg[greater_idx]
+                conjunct['POES_ALPHA_EQ'] = alpha_equator_deg
+                            
             rb_df = pd.DataFrame(data={'RBSP_DT': rb_dt, 
                                        'RBSP_L': rbsp_data[r][1][:, 0],
                                        'RBSP_SIN': np.array([np.sin(x) for x in rbsp_data[r][3]*(np.pi/180.0)]),
