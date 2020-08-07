@@ -58,6 +58,7 @@ from dateutil.tz import tzutc
 from pandas.plotting import register_matplotlib_converters
 from scipy.integrate import trapz
 from numpy import errstate,isneginf,array
+import subplotter
 
 # # DEBUG - COMMENT OUT
 # import warnings
@@ -404,12 +405,29 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
         
     conjunctions.reset_index(inplace = True, drop=True)
     
-    if save:
+    if save: # Save list of conjunctions to CSV file
         if len(savename) == 0:
             savename = times[0] + 'to' + times[1] + '_conjunct.csv'
         elif not savename.endswith('.csv'):
             savename += '.csv'
         conjunctions.to_csv(savename)
+        
+        # Add file properties to log
+        log_name = 'findconjunct_log.csv'
+        logdf = pd.DataFrame(data={'FILE_NAME':savename, 
+                                   'START_DATE':times[0], 
+                                   'END_DATE':times[1],
+                                   'NUM_CONJUNCTIONS':len(conjunctions),
+                                   'TIME_TOL':time_tol,
+                                   'L_TOL':l_tol,
+                                   'MLT_TOL':mlt_tol,
+                                   'FIELD':field,
+                                   'WITHIN':within,
+                                   'ALPHA_METHOD':alpha_method,
+                                   'L_TYPE':ltype,
+                                   'MLT_TYPE':mlt_type}, index = [0])
+        with open(log_name, 'a') as f:
+            logdf.to_csv(f, header = f.tell()==0)
     
     return conjunctions
 
@@ -440,7 +458,6 @@ def readConjunct(cfile):
                         index_col = 0, header = 0,
                         dtype=col_dtypes, parse_dates = ['POES_DT'])
     
-#     tread['mageis_pts'] = np.vectorize(colConversion)(tread['mageis_pts'].values)
     tread['mageis_pts'] = np.array([colConversion(i, date_type=True) for i in tread['mageis_pts'].values])  
     
     commonfunc = lambda x: x.replace('\'', '').replace('[','').replace(']','')
@@ -1037,4 +1054,3 @@ def plotConjunctFlux(df_flux, sci_limit = (5,5), plot_lin=True, savename='', sav
         plt.savefig(savename, dpi=600)
 
     plt.show()
-    
