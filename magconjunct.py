@@ -66,10 +66,9 @@ import subplotter
 # # END DEBUG
 
 ### FIND CONJUNCTIONS ###
-# MLT Conversion to Clock Angle
 def mltToAngle(mval):
     """
-    Helper function for findConjunction. 
+    Helper function for findConjunct, MLT conversion to clock angle. 
     
     Args:
         mval: MLT value in hours.
@@ -97,7 +96,7 @@ def mltToAngle(mval):
 
 def angleToMLT(theta):
     """
-    Helper function for findConjunction. 
+    Helper function for findConjunct, MLT conversion to clock angle. 
     
     Args:
         theta: Clock angle in degrees.
@@ -119,8 +118,19 @@ def angleToMLT(theta):
 
 
 def mltProximate(mlt1, mlt2, mltTol): 
+    """
+    Helper function for findConjunct, determines whether two MLT values 
+    are close to each other, to some tolerance value ('mltTol').
     
-    phi_tol = mltToAngle(mltTol)
+    Args:
+      mlt1, mlt2 (float, float): Input MLT values.
+      mltTol (float): Tolerance value to determine closeness between mlt1 and mlt2.
+      
+    Output: Bool value, determined by |mlt1 - mlt2| <= mltTol, after conversion
+            to clock angles.
+    """
+    
+    phi_tol = mltToAngle(mltTol) # Tol value conversion to clock angle.
     tol_coor = (np.cos((phi_tol - 180.0) * (np.pi/180.0)), 
                 np.sin((phi_tol - 180.0) * (np.pi/180.0)))
 
@@ -130,7 +140,6 @@ def mltProximate(mlt1, mlt2, mltTol):
     diff = np.absolute(phi1 - phi2) * (np.pi/180.0)
     sin_diff = np.sin(diff)
     cos_diff = np.cos(diff)
-
 
     if sin_diff <= tol_coor[1] and cos_diff >= tol_coor[0]:
         return True
@@ -148,6 +157,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                     savename='',
                     save=False):
     """
+    Find L and MLT conjunction values between POES and RBSP (MagEphem) probes, 
     Notes: alpha_method = 1 doesn't work as well.
     
     Kwargs:
@@ -170,10 +180,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
         field (str): Choose MagEphem field model (RBSP probes), either 'OP77Q' or 'TS04D'.
         
     Outputs:
-        conjunctions
-        rbsp_data (dict): MagEphem time, L, and MLT data keyed by probes: 'rbspa' and 'rbspb'.
-        poes_data (dict): POES time, L, and MLT data keyed by spacecraft ('m02', etc.)
-        mg_data (dict): MagEIS time, L, and MLT data keyed by probe: 'rbspa' and 'rbspb'.
+        conjunctions (DataFrame): List of POES-RBSP conjunctions with their properties.
+        
     """
     
     # Assert valid values for parameters
