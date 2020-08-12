@@ -248,7 +248,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     
     final_cols = ['RBSP_SC', 'POES_SC', 'POES_DT', 
                   'POES_L', 'POES_MLT',
-                  'POES_MLAT', 'POES_ALPHA',
+                  'POES_MLAT', 'POES_ALPHA_90',
                   'RBSP_L', 'RBSP_MLT',
                   'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT']
     
@@ -261,8 +261,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
         
         final_cols = ['RBSP_SC', 'POES_SC', 'POES_DT', 
                   'POES_L', 'POES_MLT',
-                  'POES_MLAT', 'POES_ALPHA',
-                  'POES_ALPHA_EQ', 'RBSP_L', 'RBSP_MLT',
+                  'POES_MLAT', 'POES_ALPHA_90',
+                  'POES_ALPHA_EQ_90', 'RBSP_L', 'RBSP_MLT',
                   'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT']
   
                     
@@ -321,7 +321,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                                           'POES_L': poes_data[p][1],
                                           'POES_MLT': mlt_poes,
                                           'POES_MLAT': mlat_poes,
-                                          'POES_ALPHA': alpha_90_poes}).set_index('POES_DT')
+                                          'POES_ALPHA_90': alpha_90_poes}).set_index('POES_DT')
                             
             if alpha_method >= 1: # Compute POES equatorial pitch angle
               
@@ -333,14 +333,14 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                     poes_bloc = poes_data[p][5]
                     conjunct['Be_over_Bl'] = np.divide(poes_beq, poes_bloc)
                 
-                input_arc = np.multiply(np.sqrt(conjunct['Be_over_Bl']), np.sin(np.multiply(conjunct['POES_ALPHA'], np.pi/180.0)))
+                input_arc_90 = np.multiply(np.sqrt(conjunct['Be_over_Bl']), np.sin(np.multiply(conjunct['POES_ALPHA_90'], np.pi/180.0)))
                 
-                alpha_equator_deg = np.arcsin(input_arc) * (180.0 / np.pi) # In degrees
+                alpha_equator_deg = np.arcsin(input_arc_90) * (180.0 / np.pi) # In degrees
                 
-                greater_idx = np.where(conjunct['POES_ALPHA'] > 90.0)[0]
+                greater_idx = np.where(conjunct['POES_ALPHA_90'] > 90.0)[0]
                 
                 alpha_equator_deg[greater_idx] = 180.0 - alpha_equator_deg[greater_idx]
-                conjunct['POES_ALPHA_EQ'] = alpha_equator_deg
+                conjunct['POES_ALPHA_EQ_90'] = alpha_equator_deg
                             
             rb_df = pd.DataFrame(data={'RBSP_DT': rb_dt, 
                                        'RBSP_L': rbsp_data[r][1][:, 0],
@@ -457,7 +457,10 @@ def readConjunct(cfile):
     
     """ 
     Args:
-        cfile: File path for CSV-format conjunction list. 
+        cfile (str): File path for CSV-format conjunction list. 
+        
+    Output:
+        tread (DataFrame)
     """
     
     col_dtypes = dict(zip(['RBSP_SC', 'POES_SC'], [str, str]))
@@ -759,9 +762,9 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
     flux, with respect to POES energy channels. 
 
     Kwargs:
-        p_sc: 
-        lowPitchAngleAvg:
-        poesTel:
+        p_sc (str, {'m02', 'm01', etc.}): POES spacecraft. 
+        lowPitchAngleAvg (bool): If True, will output MagEIS flux value averaged over the two lowest pitch angles. 
+        poesTel (str, {'tel0', 'tel90'}): POES telescope indicator, used for obtaining flux values.
 
     Args:
         dt_list (list-like): List of MagEIS conjunction points (column 'mageis_pts' from 
@@ -772,24 +775,25 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
                      findConjunction()).
                  
     Output: 
-        time_array: (N, 2) array of timestamp values associated with output flux measurements.
-                    Column 1 corresponds to POES timestamps, column 2 corresponds to MagEIS timestamps.
-        poes_binned: Energy-binned POES flux values for selected telescope.
-        mCumulative: Energy-integrated (wrt. POES' MEPED energy bins)
-                     MagEIS electron flux, binned additionally by pitch-angle. 
-        meped_sat_alpha: Pitch-angle value of selected POES telescope.
+        time_array (Array): (N, 2) array of timestamp values associated with output flux measurements.
+                            Column 1 corresponds to POES timestamps, column 2 corresponds to MagEIS 
+                            timestamps.
+        poes_binned (Array): (N, 4) array of energy-binned POES flux values for selected telescope.
+        mCumulative (Array): (N, 11, 4) array of energy-integrated (wrt. POES' MEPED 4-energy bins)
+                             MagEIS electron flux, binned additionally by pitch-angle (11 bins). 
+        meped_sat_alpha (Array): (N, 1) array of pitch-angle value based on selected POES telescope.
         
-    
     """
+    
+    assert poesTel in ['tel0', 'tel90'], "Only `tel0` or `tel90` are valid inputs to poesTel."
 
     # VAR INITS
     mCumulative = [] # Cumulative MagEIS POES-energy-binned flux,
                      # shape: (N points, 11, 4)
     N_points = len(dt_list) # Num of MagEIS conjunction points
 
-
     # POES VAR DEFAULTS
-    meped_fill = 9.969209968386869e+36
+    meped_fill = 9.969209968386869e+36 # NULL fill value
     tel0_labels = ['mep_ele_tel0_flux_e1', 
                    'mep_ele_tel0_flux_e2',
                    'mep_ele_tel0_flux_e3',
@@ -805,7 +809,6 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
     dtime = pd.to_datetime(poes_dt, format='%Y-%m-%d')
     dt_date = dtime.strftime('%Y-%m-%d')
 
-    
     ###--- READ POES ---###
     poes_data = rs.read_poes(trange = [dt_date, dt_date], 
                              sat_IDs = [p_sc], 
@@ -825,29 +828,23 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
     elif poesTel == 'tel0':
         poes_binned = np.array([poes_flux[f] for f in tel0_labels]).reshape(-1, 4)
         meped_sat_alpha = np.array([poes_flux[pitch_labels[0]]]).reshape(-1, 1)
-    else:
-        print(poesTel, 'is not a valid telescope indicator. Only \
-              `tel0` or `tel90` are valid inputs to poesTel.')
-        return
 
     # Returns ... 
     poes_binned = np.repeat(poes_binned, repeats = N_points,
                             axis=0)
     meped_sat_alpha = np.repeat(meped_sat_alpha, repeats = N_points, 
                                 axis=0)
-    
 
-    # MAGEIS VAR DEFAULTS
+    ## MAGEIS VAR DEFAULTS
     mageis_fill = -9.9e+30 # MagEIS FEDU fill values
     magNumEbins = 25 # Number of energy bins for MagEIS 'FEDU'
     alpha_dim_size = 11
     
-    # e1: >30 keV
-    # e2: >100 keV
-    # e3: >300 keV
-    # e4: >900 keV
+    ## e1: >30 keV
+    ## e2: >100 keV
+    ## e3: >300 keV
+    ## e4: >900 keV
     e_bounds = {'e1': 30, 'e2': 100, 'e3': 300, 'e4': 900} # keV 
-    
     
     mageis_dt_list = [pd.to_datetime(i).strftime('%Y-%m-%d') if type(i) == np.datetime64 
                       else i.strftime('%Y-%m-%d') for i in dt_list]
@@ -878,7 +875,6 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
             print(pd.to_datetime(m_t))
             raise e
         en = fedu_en.copy()
-        
         
         if en.ndim >= 2:
             try:
@@ -911,7 +907,8 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
         fedu4 = fedu_pt[:, e4_idx]
 
         nan_idx = list(zip(*np.where(fedu_pt < 0.0))) # Invalid points = -1e+31 and/or < 0
-
+        
+        ## AVERAGE OVER ENERGY, ACCORDING TO POES ENER. BINS
         # Update domain of integration for each pitch angle
         # (Implicitly for each MagEIS conjunction point).             
         for a_pt, e_pt in nan_idx:
@@ -919,7 +916,6 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
             
 #             print('Energy val to delete: ', e_val)
                         
-            # Bad coding practice > another for loop
             if e_val in x_integ_1[a_pt]:
                 new_e_pt = np.where(x_integ_1[a_pt] == e_val)[0]
                 x_integ_1[a_pt] = np.delete(x_integ_1[a_pt],
