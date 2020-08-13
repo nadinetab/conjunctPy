@@ -151,7 +151,7 @@ def mltProximate(mlt1, mlt2, mltTol):
 def findConjunct(times, time_tol, l_tol, mlt_tol, 
                     field,
                     alpha_tol = None,
-                    ltype = 'L', mlt_type='EDMAG_MLT', 
+                    ltype = 'L', mlt_type='EDMAG_MLT', mlat_type='EDMAG_MLAT',
                     within = False,
                     alpha_method = 0,
                     savename='',
@@ -161,8 +161,9 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     Notes: alpha_method = 1 doesn't work as well.
     
     Kwargs:
-        ltype (str): Choose specific 'L' variable to read from RBSP.
-        mlt_type (str): Choose specific 'MLT' variable to read from RBSP.
+        ltype (str): Choose specific 'L' variable to read from RBSP MagEphem.
+        mlt_type (str): Choose specific 'MLT' variable to read from RBSP MagEphem.
+        mlat_type (str): Choose specific 'MLAT' variable to read from RBSP MagEphem. 
         within (bool): Count time differences from [0, time_tol] as a 
                 MagEIS conjunction point.
         alpha_method (int): Eq. pitch angle mapping method indicator for POES measurements.
@@ -207,15 +208,15 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     #  Read in extra day to get values in between 23:59:00 and +1 00:00:00h 
     rbsp_end_time = datetime.strftime(datetime.strptime(times[1], '%Y-%m-%d') + timedelta(days=1), '%Y-%m-%d')
     
+    rb_to_read = [ltype, mlt_type, mlat_type, 'BoverBeq']
     rbsp_list = [rs.read_vap_ephem(trange=times, 
-                                   read_vars=[ltype, mlt_type], 
+                                   read_vars=rb_to_read, 
                                    probe=i,
                                    b_model=field)[0] for i in rbsp_sc]
-    
     hasNextDayPoint = True
     try:
         final_rb_point = [rs.read_vap_ephem(trange=[rbsp_end_time, rbsp_end_time],
-                            read_vars=[ltype, mlt_type], 
+                            read_vars=rb_to_read, 
                             probe=i,
                             b_model=field)[0] for i in rbsp_sc]
     except:
@@ -230,7 +231,11 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             # Append final L value
             rbsp_list[i][1] = np.concatenate((rbsp_list[i][1], final_rb_point[i][1][0].reshape(-1,18)), axis=0) 
             # Append final MLT value
-            rbsp_list[i][2] = np.append(rbsp_list[i][2], final_rb_point[i][2][0]) 
+            rbsp_list[i][2] = np.append(rbsp_list[i][2], final_rb_point[i][2][0])
+            # Append final MLAT value
+            rbsp_list[i][3] = np.append(rbsp_list[i][3], final_rb_point[i][3][0])
+            # Append final BoverBeq value
+            rbsp_list[i][4] = np.append(rbsp_list[i][4], final_rb_point[i][4][0])
     
     
     rbsp_data = dict(zip(rbsp_sc, rbsp_list))
@@ -244,15 +249,16 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
     mlt_name = 'MLT'
     lat_name = 'mag_lat_sat'
     poes_get_eq = 'default'
-    poes_var_names = [l_name, mlt_name, lat_name, 'meped_alpha_90_sat']
+    poes_var_names = [l_name, mlt_name, lat_name, 'meped_alpha_90_sat', 'meped_alpha_0_sat']
     
     final_cols = ['RBSP_SC', 'POES_SC', 'POES_DT', 
                   'POES_L', 'POES_MLT',
-                  'POES_MLAT', 'POES_ALPHA_90',
+                  'POES_MLAT', 'POES_ALPHA_90', 'POES_ALPHA_0', 
                   'RBSP_L', 'RBSP_MLT',
-                  'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT']
+                  'RBSP_MLAT', 'RBSP_BoverBeq', 
+                  'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT', 'MAGEIS_BoverBeq']
     
-    if alpha_method == 2:
+    if alpha_method >= 1:
         l_name = 'lm'
         mlt_name = 'mlt'
         lat_name = 'mlat'
@@ -260,11 +266,12 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
         poes_var_names = [l_name, mlt_name, lat_name, 'beq', 'blocal']
         
         final_cols = ['RBSP_SC', 'POES_SC', 'POES_DT', 
-                  'POES_L', 'POES_MLT',
-                  'POES_MLAT', 'POES_ALPHA_90',
-                  'POES_ALPHA_EQ_90', 'RBSP_L', 'RBSP_MLT',
-                  'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT']
-  
+                      'POES_L', 'POES_MLT', 'POES_MLAT', 
+                      'POES_ALPHA_90', 'POES_ALPHA_0', 
+                      'POES_ALPHA_EQ_90', 
+                      'RBSP_L', 'RBSP_MLT',
+                      'RBSP_MLAT', 'RBSP_BoverBeq'
+                      'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT', 'MAGEIS_BoverBeq']
                     
     poes_list = [rs.read_poes(trange=times,
                           sat_IDs=[i],
@@ -272,12 +279,16 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                           filterL=True,
                           fileType=poes_get_eq)[0] for i in poes_sc]
     if alpha_method == 2: # Create a separate dictionary for MEPED local pitch angle values according to spacecraft
-        poes_alpha_90_dict = dict(zip(poes_sc, [rs.read_poes(trange=times,
-                                                sat_IDs = [i],
-                                                read_vars = ['meped_alpha_90_sat'],
-                                                fileType='default')[0][1] for i in poes_sc]))
+        poes_alpha_list = [rs.read_poes(trange=times,
+                                        sat_IDs = [i],
+                                        read_vars = ['meped_alpha_90_sat', 'meped_alpha_0_sat'],
+                                        fileType='default')[0][1] for i in poes_sc]
+        poes_alpha_90_dict = dict(zip(poes_sc, [poes_alpha_list[i][1] for i in range(len(poes_alpha_list))]))
+        poes_alpha_0_dict = dict(zip(poes_sc, [poes_alpha_list[i][2] for i in range(len(poes_alpha_list))]))
+        
     else:
         poes_alpha_90_dict = dict(zip(poes_sc, [poes_list[i][4] for i in range(len(poes_list))]))
+        poes_alpha_0_dict = dict(zip(poes_sc, [poes_list[i][5] for i in range(len(poes_list))]))
     
     poes_data = dict(zip(poes_sc, poes_list))
     
@@ -295,8 +306,12 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
         rb_dt = np.array([rt.replace(tzinfo=None) for rt in rb_dt])
         
         mlt_data = rbsp_data[r][2]
+        
+        # Convert MagEphem MLT angle to clock angle
         cAngle = np.array([mltToAngle(elem) for elem in mlt_data])
         rbsp_data[r].append(cAngle)
+        # Append to data list
+        r_mca = rbsp_data[r][-1]
         
         for p in poes_sc:
             
@@ -305,6 +320,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             mlt_poes = poes_data[p][2]
             mlat_poes = poes_data[p][3]
             alpha_90_poes = poes_alpha_90_dict[p]
+            alpha_0_poes = poes_alpha_0_dict[p]
             
             pcAngle = np.array([mltToAngle(elem) for elem in mlt_poes])
             poes_data[p].append(pcAngle)
@@ -312,8 +328,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             psin = np.vectorize(np.sin)(poes_data[p][3] * (np.pi/180.0))
             pcos = np.vectorize(np.cos)(poes_data[p][3] * (np.pi/180.0))
             
-            rsin = np.vectorize(np.sin)(rbsp_data[r][3] * (np.pi/180.0))
-            rcos = np.vectorize(np.cos)(rbsp_data[r][3] * (np.pi/180.0))
+            rsin = np.vectorize(np.sin)(r_mca * (np.pi/180.0))
+            rcos = np.vectorize(np.cos)(r_mca * (np.pi/180.0))
             
             conjunct = pd.DataFrame(data={'RBSP_SC': r, 
                                           'POES_SC': p,
@@ -321,7 +337,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                                           'POES_L': poes_data[p][1],
                                           'POES_MLT': mlt_poes,
                                           'POES_MLAT': mlat_poes,
-                                          'POES_ALPHA_90': alpha_90_poes}).set_index('POES_DT')
+                                          'POES_ALPHA_90': alpha_90_poes,
+                                          'POES_ALPHA_0': alpha_0_poes }).set_index('POES_DT')
                             
             if alpha_method >= 1: # Compute POES equatorial pitch angle
               
@@ -341,19 +358,24 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                 
                 alpha_equator_deg[greater_idx] = 180.0 - alpha_equator_deg[greater_idx]
                 conjunct['POES_ALPHA_EQ_90'] = alpha_equator_deg
-                            
+            
+            # RBSP MagEphem DataFrame
             rb_df = pd.DataFrame(data={'RBSP_DT': rb_dt, 
                                        'RBSP_L': rbsp_data[r][1][:, 0],
-                                       'RBSP_SIN': np.array([np.sin(x) for x in rbsp_data[r][3]*(np.pi/180.0)]),
-                                       'RBSP_COS': np.array([np.cos(x) for x in rbsp_data[r][3]*(np.pi/180.0)])}).set_index('RBSP_DT')
+                                       'RBSP_MLAT': rbsp_data[r][3],
+                                       'RBSP_BoverBeq': rbsp_data[r][4],
+                                       'RBSP_SIN': np.array([np.sin(x) for x in r_mca*(np.pi/180.0)]),
+                                       'RBSP_COS': np.array([np.cos(x) for x in r_mca*(np.pi/180.0)]) }).set_index('RBSP_DT')
             
-            # RBSP data resampled from 1min to 1 second resolution and reindexed according to POES time resolution
+            # RBSP MagEphem data resampled from 1min to 1 second resolution and reindexed according to POES time resolution
             # Timestamps will sometimes be off with POES by 1 second.
             rb_df = rb_df.resample('1S').interpolate(method='linear')
             rb_df_poes = rb_df.reindex(conjunct.index)
                         
             # Combine both spacecraft data into one DataFrame           
             conjunct['RBSP_L'] = rb_df_poes['RBSP_L']
+            conjunct['RBSP_MLAT'] = rb_df_poes['RBSP_MLAT']
+            conjunct['RBSP_BoverBeq'] = rb_df_poes['RBSP_BoverBeq']
             
             #-- MLT 
             conjunct['RBSP_PHI'] = np.arctan2(rb_df_poes['RBSP_SIN'], rb_df_poes['RBSP_COS']) * (180.0 / np.pi)
@@ -377,6 +399,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             mageis_conjunct['mageis_pts'] = np.nan
             mageis_conjunct['MAGEIS_L'] = np.nan
             mageis_conjunct['MAGEIS_MLT'] = np.nan
+            mageis_conjunct['MAGEIS_MLAT'] = np.nan
+            mageis_conjunct['MAGEIS_BoverBeq'] = np.nan
             
             # Set column data type
             mageis_conjunct['mageis_pts'] = mageis_conjunct['mageis_pts'].astype('object')
@@ -385,8 +409,11 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             
             mg_df = pd.DataFrame(data={'MG_DT': mg_data[r][0],
                                        'MAGEIS_L': np.nan,
-                                       'MAGEIS_MLT': np.nan}).set_index('MG_DT')
+                                       'MAGEIS_MLT': np.nan,
+                                       'MAGEIS_MLAT': np.nan,
+                                       'MAGEIS_BoverBeq': np.nan}).set_index('MG_DT')
             
+            # Reindex MagEphem data to MagEIS cadence
             rb_df_mageis = rb_df.reindex(mg_df.index)                
             
             rb_df_mageis['RBSP_PHI'] = np.arctan2(rb_df_mageis['RBSP_SIN'], rb_df_mageis['RBSP_COS']) * (180.0 / np.pi)
@@ -394,7 +421,9 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             rb_df_mageis['RBSP_MLT'] = np.array([angleToMLT(i) for i in rb_df_mageis['RBSP_PHI'].values])
             
             mg_df['MAGEIS_L'] = rb_df_mageis['RBSP_L']
-            mg_df['MAGEIS_MLT'] = rb_df_mageis['RBSP_MLT']   
+            mg_df['MAGEIS_MLT'] = rb_df_mageis['RBSP_MLT']
+            mg_df['MAGEIS_MLAT'] = rb_df_mageis['RBSP_MLAT']
+            mg_df['MAGEIS_BoverBeq'] = rb_df_mageis['RBSP_BoverBeq']
                         
             for row in mageis_conjunct.itertuples():
                 
@@ -407,6 +436,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                     mageis_conjunct.at[row.Index, 'mageis_pts'] = mg_df.index[mgidx].values
                     mageis_conjunct.at[row.Index, 'MAGEIS_L'] = mg_df['MAGEIS_L'].iloc[mgidx].values
                     mageis_conjunct.at[row.Index, 'MAGEIS_MLT'] = mg_df['MAGEIS_MLT'].iloc[mgidx].values
+                    mageis_conjunct.at[row.Index, 'MAGEIS_MLAT'] = mg_df['MAGEIS_MLAT'].iloc[mgidx].values
+                    mageis_conjunct.at[row.Index, 'MAGEIS_BoverBeq'] = mg_df['BoverBeq'].iloc[mgidx].values
             
             mageis_conjunct = mageis_conjunct[mageis_conjunct['mageis_pts'].notna()].reset_index()
             conjunctions = conjunctions.append(mageis_conjunct[final_cols])        
@@ -624,9 +655,25 @@ def plotConjunct(df_conj, n_conj,
 
 ### GET AND COMPARE FLUX ###
 def compare_all_flux(dfConjunct, l_min = 3.0, 
-                     low_pitch_avg = True, poes_telescope='tel90', 
+                     low_pitch_avg=True, poes_telescope='tel90', 
                      savename='', save=False):
+    """
+    Kwargs:
+        l_min (float):
+        low_pitch_avg (bool):
+        poes_telescope (str, {'tel0', 'tel90'}:
+        savename (str):
+        save (bool): 
+        
+    Args:
+        dfConjunct (DataFrame):
+        
+    Output:
+        df_flux (DataFrame): 
+    """
+    assert poes_telescope in ['tel0', 'tel90'], "Only {'tel0', 'tel90'} are valid values for poes_telescope."
     
+    # L minimum limit
     df_reduced = dfConjunct[ dfConjunct['POES_L'] > l_min ]
     
     if len(df_reduced) == 0:
@@ -640,17 +687,35 @@ def compare_all_flux(dfConjunct, l_min = 3.0,
         to_pd_dt = lambda x: pd.to_datetime(x)
         df_reduced['mageis_pts'] = df_reduced['mageis_pts'].apply(to_pd_dt)
     
+    if low_pitch_avg:
+        mepAlphas = None
+        mageisB_Beq = None
+    else:
+        if poes_telescope == 'tel90':
+            assert 'POES_ALPHA_EQ_90' in df_reduced.columns, "{'POES_ALPHA_90', 'POES_ALPHA_EQ_90'} are required as columns within dfConjunct if poes_telescope = 'tel90' and low_pitch_avg = False."
+            mepAlphas = df_reduced[['POES_ALPHA_90', 'POES_ALPHA_EQ_90']].values
+        else:
+            assert 'POES_ALPHA_EQ_0' in df_reduced.columns, "{'POES_ALPHA_0', 'POES_ALPHA_EQ_0'} are required as columns within dfConjunct if poes_telescope = 'tel0' and low_pitch_avg = False."
+            mepAlphas = df_reduced[['POES_ALPHA_0', 'POES_ALPHA_EQ_0']].values
+                
+        mageisB_Beq = df['MAGEIS_BoverBeq'].values
+    
     zipped_params = zip(df_reduced['mageis_pts'].values, 
                         df_reduced['POES_DT'].values,
                         df_reduced['RBSP_SC'].values,
-                        df_reduced['POES_SC'].values)
+                        mepAlphas,
+                        mageisB_Beq,
+                        df_reduced['POES_SC'].values
+                        )
     
     agg = [compare_flux(mageis_conj_list = i, 
                         poes_time = j,
                         rbsc = k,
-                        poes_sc = l,
+                        meped_alphas = l,
+                        mageis_BoverBeq = r,
+                        poes_sc = s,
                         lowPitchAngleAvg = low_pitch_avg,
-                        poes_tel=poes_telescope) for i, j, k, l in zipped_params]
+                        poes_tel=poes_telescope) for i, j, k, l, r, s in zipped_params]
         
     t = np.concatenate([a[0] for a in agg], axis=0)
     meped_alphas = np.concatenate([a[1] for a in agg], axis=0)
@@ -675,10 +740,10 @@ def compare_all_flux(dfConjunct, l_min = 3.0,
     df_flux['POES_DT'] = t[:, 0]
     df_flux['MAGEIS_DT'] = t[:, 1]
     df_flux['MEPED_ALPHA'] = meped_alphas
-    df_flux['POES_L'] = df_reduced.iloc[pdt_idx]['POES_L'].values    
+    df_flux['POES_L'] = df_reduced.iloc[pdt_idx]['POES_L'].values 
+    df_flux['POES_MLT'] = df_reduced.iloc[pdt_idx]['POES_MLT'].values
     df_flux['MAGEIS_L'] = mageis_l
     df_flux['MAGEIS_MLT'] = mageis_mlt
-    df_flux['POES_MLT'] = df_reduced.iloc[pdt_idx]['POES_MLT'].values
     df_flux['POES_e1'] = e1[:, 0] 
     df_flux['POES_e2'] = e2[:, 0]                            
     df_flux['POES_e3'] = e3[:, 0]
@@ -699,41 +764,55 @@ def compare_all_flux(dfConjunct, l_min = 3.0,
     return df_flux
 
 
-def compare_flux(mageis_conj_list, poes_time, rbsc, poes_sc='m02', lowPitchAngleAvg = True, poes_tel='tel90'):    
+def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_BoverBeq = None, 
+                 poes_sc='m02', lowPitchAngleAvg = True, poes_tel='tel90'):    
     """
     Takes get_both_flux output, and implements one more processing step 
     to computing MagEIS e-binned values.
     
     Kwargs:
-        poes_sc (str):
-        lowPitchAngleAvg (bool):
-        poesTel (str):
+        poes_sc (str, {'m02', 'm01', etc.}): POES spacecraft. Default 'm02' (metop02).
+        lowPitchAngleAvg (bool): If True, will output MagEIS flux value averaged over the two lowest pitch angles. 
+                                 If False, will calculate MagEIS equatorial pitch-angle values from mageis_BoverBeq
+                                 and use the closest match to POES eq. alpha.
+        poesTel (str, {'tel0', 'tel90'}): POES telescope indicator, used for obtaining flux values.
+        meped_alphas (3d-array): (N, 2, m) array of MEPED pitch angle values, depending on poesTel, where m is the number of
+                                  MagEIS conjunction points for each POES timestamp.
+                                  First column corresponds to local value, the second column corresponds to calculate 
+                                  equatorial value. Default None if lowPitchAngleAvg = True, otherwise, must pass in a valid array. 
+        mageis_BoverBeq (list-like, or None): List of Blocal / Beq values at conjunction points (column 'MAGEIS_BoverBeq' 
+                                              from findConjunct()). Default None if lowPitchAngleAvg=True. Otherwise, must
+                                              pass in a valid list. Each element of the list is a list.
+                                              
 
     Args:
         mageis_conj_list (Pandas Series or list-like): List of MagEIS conjunction points (column 'mageis_pts' from 
-                 findConjunct() output).
+                                                       findConjunct() output).
         poes_time (Pandas Series or list-like): POES conjunction point (column 'POES_DT' from findConjunct()
-                 output).
-        rbsc (str): Van Allen probe, 'rbspa' or 'rbspb', (column 'RBSP_SC' from 
-                 findConjunct()).
+                                                output).
+        rbsc (str): Van Allen probe, 'rbspa' or 'rbspb', (column 'RBSP_SC' from findConjunct()).
+        
                  
     Output: 
-        time_array (1d-array): 
-        mCumulative (2d-array): Energy-integrated (wrt. POES' MEPED energy bins)
-                        MagEIS electron flux, binned additionally by pitch-angle. 
-        poes_binned (2d-array): 
+        t: 
+        e1:
+        e2:
+        e3:
+        e4:
 
     """
     
-    t, pbin, mbin_full, mep_alpha = get_both_flux(mageis_conj_list, 
-                                                 poes_dt=poes_time, 
-                                                 rb_sc=rbsc,
-                                                 p_sc=poes_sc,
-                                                 poesTel = poes_tel) 
+    if not lowPitchAngleAvg:
+        assert meped_alphas is not None and mageis_BoverBeq is not None, "If lowPitchAngleAvg = False, then valid values must be passed in for meped_alphas and mageis_BoverBeq."
+    
+    t, pbin, mbin_full, mageis_alphas = get_both_flux(mageis_conj_list, 
+                                                      poes_dt=poes_time, 
+                                                      rb_sc=rbsc,
+                                                      p_sc=poes_sc,
+                                                      poesTel = poes_tel) 
     
     # One more processing step for MagEIS flux: average over certain pitch angles
     if lowPitchAngleAvg: 
-        
         mbin = []
         
         for n in range(mbin_full.shape[0]):
@@ -743,8 +822,21 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, poes_sc='m02', lowPitchAngle
         mbin = np.array(mbin)
         
     else:
-        print('(compare_flux) Error: Only averages across lowest pitch angles are implemented, \
-               set lowPitchAngleAvg = True.')
+#         print('(compare_flux) Error: Only averages across lowest pitch angles are implemented, \
+#                set lowPitchAngleAvg = True.')
+        # get_both_flux outputs MagEIS local pitch-angle bins
+        # Convert to equatorial values
+          # - alpha_method = 2
+          #   Read Beq, Blocal
+        # Map those equatorial values to the corresponding binned data
+        
+        # For each timestamp, find closest matching MagEIS pitch-angle bin.
+        for i in range(mageis_alphas.shape[0]):
+            BoverBeq_i = mageis_BoverBeq[i] 
+            
+        print("IMPLEMENT")
+    
+        
         return
         
     e1 = np.concatenate([pbin[:, 0].reshape(-1,1), mbin[:,0].reshape(-1,1)], axis=1)   
@@ -752,11 +844,11 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, poes_sc='m02', lowPitchAngle
     e3 = np.concatenate([pbin[:, 2].reshape(-1,1), mbin[:,2].reshape(-1,1)], axis=1)   
     e4 = np.concatenate([pbin[:, 3].reshape(-1,1), mbin[:,3].reshape(-1,1)], axis=1)
         
-    return t, mep_alpha, e1, e2, e3, e4
+    return t, mep_alphas, e1, e2, e3, e4
 
 
 def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02', 
-                 poesTel='tel90'):
+                  poesTel='tel90'):
     """
     Returns arrays of both MagEIS energy-binned flux and POES energy-binned
     flux, with respect to POES energy channels. 
@@ -775,13 +867,14 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
                      findConjunction()).
                  
     Output: 
-        time_array (Array): (N, 2) array of timestamp values associated with output flux measurements.
-                            Column 1 corresponds to POES timestamps, column 2 corresponds to MagEIS 
-                            timestamps.
-        poes_binned (Array): (N, 4) array of energy-binned POES flux values for selected telescope.
-        mCumulative (Array): (N, 11, 4) array of energy-integrated (wrt. POES' MEPED 4-energy bins)
-                             MagEIS electron flux, binned additionally by pitch-angle (11 bins). 
-        meped_sat_alpha (Array): (N, 1) array of pitch-angle value based on selected POES telescope.
+        time_array (2d-array): (N, 2) array of timestamp values associated with output flux measurements.
+                                Column 1 corresponds to POES timestamps, column 2 corresponds to MagEIS 
+                                timestamps.
+        poes_binned (2d-array): (N, 4) array of energy-binned POES flux values for selected telescope.
+        mCumulative (3d-array): (N, 11, 4) array of energy-integrated (wrt. POES' MEPED 4-energy bins)
+                                 MagEIS electron flux, binned additionally by pitch-angle (11 bins). 
+        mageis_fedu_alpha (2d-array): (N, 11) array of local pitch-angle value for MagEIS FEDU, according
+                                       to time range specified in time_array.
         
     """
     
@@ -790,7 +883,7 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
     # VAR INITS
     mCumulative = [] # Cumulative MagEIS POES-energy-binned flux,
                      # shape: (N points, 11, 4)
-    N_points = len(dt_list) # Num of MagEIS conjunction points
+    N_points = len(dt_list) # Num of MagEIS conjunction points, for full conjunction list
 
     # POES VAR DEFAULTS
     meped_fill = 9.969209968386869e+36 # NULL fill value
@@ -802,8 +895,8 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
                    'mep_ele_tel90_flux_e2',
                    'mep_ele_tel90_flux_e3',
                    'mep_ele_tel90_flux_e4']
-    pitch_labels = ['meped_alpha_0_sat', 'meped_alpha_90_sat']
-    full_labels = pitch_labels + tel0_labels + tel90_labels
+#     pitch_labels = ['meped_alpha_0_sat', 'meped_alpha_90_sat']
+    full_labels = tel0_labels + tel90_labels
     poes_fill = [meped_fill for i in range(len(full_labels))]
     
     dtime = pd.to_datetime(poes_dt, format='%Y-%m-%d')
@@ -824,16 +917,16 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
 
     if poesTel == 'tel90':
         poes_binned = np.array([poes_flux[f] for f in tel90_labels]).reshape(-1, 4)
-        meped_sat_alpha = np.array([poes_flux[pitch_labels[1]]]).reshape(-1, 1)
+#         meped_sat_alpha = np.array([poes_flux[pitch_labels[1]]]).reshape(-1, 1)
     elif poesTel == 'tel0':
         poes_binned = np.array([poes_flux[f] for f in tel0_labels]).reshape(-1, 4)
-        meped_sat_alpha = np.array([poes_flux[pitch_labels[0]]]).reshape(-1, 1)
+#         meped_sat_alpha = np.array([poes_flux[pitch_labels[0]]]).reshape(-1, 1)
 
     # Returns ... 
     poes_binned = np.repeat(poes_binned, repeats = N_points,
                             axis=0)
-    meped_sat_alpha = np.repeat(meped_sat_alpha, repeats = N_points, 
-                                axis=0)
+#     meped_sat_alpha = np.repeat(meped_sat_alpha, repeats = N_points, 
+#                                 axis=0)
 
     ## MAGEIS VAR DEFAULTS
     mageis_fill = -9.9e+30 # MagEIS FEDU fill values
@@ -849,10 +942,8 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
     mageis_dt_list = [pd.to_datetime(i).strftime('%Y-%m-%d') if type(i) == np.datetime64 
                       else i.strftime('%Y-%m-%d') for i in dt_list]
     
-
     if len(mageis_dt_list) == 1: 
         mageis_dt_list.append(mageis_dt_list[0])
-    
     
     ###--- READ MAGEIS ---### 
     mg_labels = ['FEDU', 'FEDU_Energy', 'FEDU_Alpha']
@@ -863,6 +954,8 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
     fedu = mageis_data[1]
     fedu_en = mageis_data[2]
     alphas = mageis_data[3]
+    
+    mageis_fedu_alpha = alphas # (OUTPUT)
     
     # For each MagEIS conjunction point
     for t in range(N_points):
@@ -980,7 +1073,7 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
     m_dts = np.array(dt_list).reshape(-1, 1)
     time_arr = np.concatenate([p_dts, m_dts], axis=1)
     
-    return time_arr, poes_binned, mCumulative, meped_sat_alpha
+    return time_arr, poes_binned, mCumulative, mageis_fedu_alpha
 
 
 ##-- PLOT --##
