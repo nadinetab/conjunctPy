@@ -639,7 +639,6 @@ def plotConjunct(df_conj, n_conj,
     ax1.axvline(conj_list[0][2],color='cornflowerblue', linewidth=0.40)
     ax1.axvline(conj_list[-1][2],color='cornflowerblue', linewidth=0.40)
     
-    
     # MLT                            
     ax2.plot(rb_Dts[rlo_idx:rhi_idx], rb_Ms[rlo_idx:rhi_idx], '--', color='indianred') 
     ax2.plot(po_Dts[plo_idx:phi_idx], po_Ms[plo_idx:phi_idx], color='cornflowerblue')
