@@ -270,8 +270,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                       'POES_ALPHA_90', 'POES_ALPHA_0', 
                       'POES_ALPHA_EQ_90', 
                       'RBSP_L', 'RBSP_MLT',
-                      'RBSP_MLAT', 'RBSP_BoverBeq'
-                      'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT', 'MAGEIS_BoverBeq']
+                      'RBSP_MLAT', 'RBSP_BoverBeq',
+                      'mageis_pts', 'MAGEIS_L', 'MAGEIS_MLT', 'MAGEIS_MLAT', 'MAGEIS_BoverBeq']
                     
     poes_list = [rs.read_poes(trange=times,
                           sat_IDs=[i],
@@ -406,6 +406,8 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
             mageis_conjunct['mageis_pts'] = mageis_conjunct['mageis_pts'].astype('object')
             mageis_conjunct['MAGEIS_L'] = mageis_conjunct['MAGEIS_L'].astype('object')
             mageis_conjunct['MAGEIS_MLT'] = mageis_conjunct['MAGEIS_MLT'].astype('object')
+            mageis_conjunct['MAGEIS_MLAT'] = mageis_conjunct['MAGEIS_MLT'].astype('object')
+            mageis_conjunct['MAGEIS_BoverBeq'] = mageis_conjunct['MAGEIS_MLT'].astype('object')
             
             mg_df = pd.DataFrame(data={'MG_DT': mg_data[r][0],
                                        'MAGEIS_L': np.nan,
@@ -437,7 +439,7 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
                     mageis_conjunct.at[row.Index, 'MAGEIS_L'] = mg_df['MAGEIS_L'].iloc[mgidx].values
                     mageis_conjunct.at[row.Index, 'MAGEIS_MLT'] = mg_df['MAGEIS_MLT'].iloc[mgidx].values
                     mageis_conjunct.at[row.Index, 'MAGEIS_MLAT'] = mg_df['MAGEIS_MLAT'].iloc[mgidx].values
-                    mageis_conjunct.at[row.Index, 'MAGEIS_BoverBeq'] = mg_df['BoverBeq'].iloc[mgidx].values
+                    mageis_conjunct.at[row.Index, 'MAGEIS_BoverBeq'] = mg_df['MAGEIS_BoverBeq'].iloc[mgidx].values
             
             mageis_conjunct = mageis_conjunct[mageis_conjunct['mageis_pts'].notna()].reset_index()
             conjunctions = conjunctions.append(mageis_conjunct[final_cols])        
