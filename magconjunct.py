@@ -11,6 +11,15 @@ Functions:
 - plotConjunct
 
 Last updated: 
+04 September 2020: 
+- 
+
+03 September 2020: 
+- Debug findConjunct()
+
+13 August 2020:
+- Added additional columns for MLAT and BoverBeq for POES and MAGEIS in findConjunct()
+
 05 August 2020:
 - Get POES equatorial pitch angle from POES MagEphem ('OP77Q') files in findConjunct()
 - Working on: Get POES equatorial pitch angle through MLAT in findConjunct()
