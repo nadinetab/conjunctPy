@@ -11,6 +11,9 @@ Functions:
 - plotConjunct
 
 Last updated: 
+14 September 2020: 
+- compare_all_flux and compare_flux updates to get matching equatorial pitch angle values. 
+
 04 September 2020: 
 - 
 
@@ -520,6 +523,12 @@ def readConjunct(cfile):
         
     if 'MAGEIS_MLT' in tread.columns:
         tread['MAGEIS_MLT'] = [colConversion(i, date_type=False) for i in tread['MAGEIS_MLT'].values] 
+        
+    if 'MAGEIS_MLAT' in tread.columns:
+        tread['MAGEIS_MLAT'] = [colConversion(i, date_type=False) for i in tread['MAGEIS_MLAT'].values] 
+        
+    if 'MAGEIS_BoverBeq' in tread.columns:
+        tread['MAGEIS_BoverBeq'] = [colConversion(i, date_type=False) for i in tread['MAGEIS_BoverBeq'].values] 
     
     return tread
          
@@ -786,25 +795,26 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
                                  If False, will calculate MagEIS equatorial pitch-angle values from mageis_BoverBeq
                                  and use the closest match to POES eq. alpha.
         poesTel (str, {'tel0', 'tel90'}): POES telescope indicator, used for obtaining flux values.
-        meped_alphas (3d-array): (N, 2, m) array of MEPED pitch angle values, depending on poesTel, where m is the number of
-                                  MagEIS conjunction points for each POES timestamp.
-                                  First column corresponds to local value, the second column corresponds to calculate 
-                                  equatorial value. Default None if lowPitchAngleAvg = True, otherwise, must pass in a valid array. 
-        mageis_BoverBeq (list-like, or None): List of Blocal / Beq values at conjunction points (column 'MAGEIS_BoverBeq' 
-                                              from findConjunct()). Default None if lowPitchAngleAvg=True. Otherwise, must
-                                              pass in a valid list. Each element of the list is a list.
+        meped_alphas (list-like): Array of MEPED pitch angle values. This takes in a 2-element row vector or list where the first element corresponds to 
+                                  the local value, and the second column corresponds to the computed equatorial value. 
+                                  Default None if lowPitchAngleAvg = True, otherwise, must pass in a valid array or list. 
+                                  Use columns [['POES_ALPHA_xx', 'POES_ALPHA_EQ_xx']] from findConjunct() DataFrame output.
+        mageis_BoverBeq (list-like, or None): List or array of Blocal / Beq values at each conjunction point (an element of 
+                                              column 'MAGEIS_BoverBeq' from findConjunct()). 
+                                              Default None if lowPitchAngleAvg=True. Otherwise, must pass in a valid list or array. 
                                               
 
     Args:
-        mageis_conj_list (Pandas Series or list-like): List of MagEIS conjunction points (column 'mageis_pts' from 
+        mageis_conj_list (list-like): List of MagEIS conjunction points (an element of column 'mageis_pts' from 
                                                        findConjunct() output).
-        poes_time (Pandas Series or list-like): POES conjunction point (column 'POES_DT' from findConjunct()
+        poes_time (list-like): POES conjunction point (an element of column 'POES_DT' from findConjunct()
                                                 output).
-        rbsc (str): Van Allen probe, 'rbspa' or 'rbspb', (column 'RBSP_SC' from findConjunct()).
+        rbsc (str): Van Allen probe, 'rbspa' or 'rbspb', (an element of column 'RBSP_SC' from findConjunct()).
         
                  
     Output: 
         t: 
+        meped_alphas:  where N is the number of associated MagEIS conjunction points for the particular POES timestamp.
         e1:
         e2:
         e3:
@@ -820,6 +830,10 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
                                                       rb_sc=rbsc,
                                                       p_sc=poes_sc,
                                                       poesTel = poes_tel) 
+    n_points = len(mageis_conj_list)
+    
+    # Debug
+    assert n_points < 3, "Check n_points = len(mageis_conj_list)"
     
     # One more processing step for MagEIS flux: average over certain pitch angles
     if lowPitchAngleAvg: 
@@ -832,20 +846,32 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
         mbin = np.array(mbin)
         
     else:
-#         print('(compare_flux) Error: Only averages across lowest pitch angles are implemented, \
-#                set lowPitchAngleAvg = True.')
-        # get_both_flux outputs MagEIS local pitch-angle bins
-        # Convert to equatorial values
-          # - alpha_method = 2
-          #   Read Beq, Blocal
-        # Map those equatorial values to the corresponding binned data
+        # get_both_flux outputs MagEIS local pitch-angle bins (last output)
         
-        # For each timestamp, find closest matching MagEIS pitch-angle bin.
-        for i in range(mageis_alphas.shape[0]):
-            BoverBeq_i = mageis_BoverBeq[i] 
-            
-        print("IMPLEMENT")
-    
+        # Create array of MEPED alphas. Second column (:,1) holds 'POES_ALPHA_EQ_x'
+        poes_alphas = np.array(meped_alphas).reshape(-1, 2)
+        if n_points > 1:
+            poes_alphas = np.repeat(poes_alphas, repeats = n_points, axis = 0)
+        
+        # (N, 11) array of MagEIS pitch angle bins (equatorial values)
+        mageis_alpha_eq = np.zeros(shape = mageis_alphas.shape)
+        
+        # Beq/Blocal
+        Be_over_Bl = [1.0/n for n in mageis_BoverBeq]
+        
+        # Convert to equatorial values
+            # - alpha_method = 2
+        for i in range(n_points):
+            r1 = mageis_alphas[i, :] * (np.pi/180.0) # Convert alpha values in deg to radians. Result is a row vector.
+            r2 = np.sqrt(Be_over_Bl[i]) * np.sin(r1)
+            r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
+            mageis_alpha_eq[i, :] = r3
+                    
+        #-- For each timestamp, find closest matching MagEIS pitch-angle bin.
+        
+        #-- Map those equatorial values to the corresponding binned data.
+            # -- Get pitch angle index of closest matching MagEIS eq value to POES eq value
+            # -- Get mbin_full[idx, :], where the first dim. corr. to pitch angles, the second to energy bins.
         
         return
         
@@ -854,7 +880,7 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
     e3 = np.concatenate([pbin[:, 2].reshape(-1,1), mbin[:,2].reshape(-1,1)], axis=1)   
     e4 = np.concatenate([pbin[:, 3].reshape(-1,1), mbin[:,3].reshape(-1,1)], axis=1)
         
-    return t, mep_alphas, e1, e2, e3, e4
+    return t, poes_alphas, e1, e2, e3, e4
 
 
 def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02', 
@@ -877,7 +903,9 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
                      findConjunction()).
                  
     Output: 
-        time_array (2d-array): (N, 2) array of timestamp values associated with output flux measurements.
+        time_array (2d-array): (N, 2) array of timestamp values associated with output flux measurements, where 
+                                N (as for the other variables) is the number of associated MagEIS conjunction points 
+                                for the particular POES timestamp.
                                 Column 1 corresponds to POES timestamps, column 2 corresponds to MagEIS 
                                 timestamps.
         poes_binned (2d-array): (N, 4) array of energy-binned POES flux values for selected telescope.
