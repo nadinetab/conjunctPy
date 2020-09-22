@@ -735,9 +735,10 @@ def compare_all_flux(dfConjunct, l_min = 3.0,
                         poes_sc = s,
                         lowPitchAngleAvg = low_pitch_avg,
                         poes_tel=poes_telescope) for i, j, k, l, r, s in zipped_params]
-        
+    
+            
     t = np.concatenate([a[0] for a in agg], axis=0)
-    meped_alphas = np.concatenate([a[1] for a in agg], axis=0)
+    eq_alphas = np.concatenate([a[1] for a in agg], axis=0)
     e1 = np.concatenate([a[2] for a in agg], axis=0)
     e2 = np.concatenate([a[3] for a in agg], axis=0)
     e3 = np.concatenate([a[4] for a in agg], axis=0)
@@ -758,7 +759,8 @@ def compare_all_flux(dfConjunct, l_min = 3.0,
     df_flux = pd.DataFrame()
     df_flux['POES_DT'] = t[:, 0]
     df_flux['MAGEIS_DT'] = t[:, 1]
-    df_flux['MEPED_ALPHA'] = meped_alphas
+    df_flux['MEPED_ALPHA_EQ'] = eq_alphas[:, 0]
+    df_flux['MAGEIS_ALPHA_EQ'] = eq_alphas[:, 1]
     df_flux['POES_L'] = df_reduced.iloc[pdt_idx]['POES_L'].values 
     df_flux['POES_MLT'] = df_reduced.iloc[pdt_idx]['POES_MLT'].values
     df_flux['MAGEIS_L'] = mageis_l
@@ -814,7 +816,9 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
                  
     Output: 
         t: 
-        meped_alphas:  where N is the number of associated MagEIS conjunction points for the particular POES timestamp.
+        eq_alphas:  where N is the number of associated MagEIS conjunction points for the particular POES timestamp.
+                    If 'lowPitchAngleAvg' is False, 
+                    If 'lowPitchAngleAvg' is True,
         e1:
         e2:
         e3:
@@ -831,6 +835,7 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
                                                       p_sc=poes_sc,
                                                       poesTel = poes_tel) 
     n_points = len(mageis_conj_list)
+    assert n_points == mbin_full.shape[0], "Check n_points."
     
     # Debug
     assert n_points < 3, "Check n_points = len(mageis_conj_list)"
@@ -839,11 +844,18 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
     if lowPitchAngleAvg: 
         mbin = []
         
+        
         for n in range(mbin_full.shape[0]):
             mbin_n = [np.nanmean(mbin_full[n, [0, -1], col]) for col in range(4)]
             mbin.append(mbin_n)
         
         mbin = np.array(mbin)
+        
+        poes_alphas_eq = np.repeat(meped_alphas[1], repeat = n_points, axis = 0)
+        averaged_m_alpha = np.nanmean([mageis_alphas[0, 0], 180.0 - mageis_alphas[0, -1]])
+        mag_alphas_avg = np.repeat(averaged_m_alpha, repeat = n_points, axis = 0)
+        
+        eq_alphas = np.concatenate([poes_alphas_eq, mag_alphas_avg], axis = 1)
         
     else:
         # get_both_flux outputs MagEIS local pitch-angle bins (last output)
@@ -867,20 +879,27 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
             r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
             mageis_alpha_eq[i, :] = r3
                     
-        #-- For each timestamp, find closest matching MagEIS pitch-angle bin.
+        #-- Find closest matching MagEIS pitch-angle bin.
+        pEq = poes_alphas[0, 1]
+        alpha_diff = np.abs(mageis_alpha_eq[0, :] - pEq)
+        argMinEq = np.argmin(alpha_diff)
+        matchEq = mageis_alpha_eq[:, argMin]
+        
+        mbin = [:, argMinEq, :]
+        assert mbin.shape == (n_points, 4), "Fix mbin shape." # Debug
+        
+        eq_alphas = np.concatenate(poes_alphas[:, 1], mageis_alphas_eq[:, argMinEq], axis=1)
         
         #-- Map those equatorial values to the corresponding binned data.
             # -- Get pitch angle index of closest matching MagEIS eq value to POES eq value
             # -- Get mbin_full[idx, :], where the first dim. corr. to pitch angles, the second to energy bins.
-        
-        return
-        
+    
     e1 = np.concatenate([pbin[:, 0].reshape(-1,1), mbin[:,0].reshape(-1,1)], axis=1)   
     e2 = np.concatenate([pbin[:, 1].reshape(-1,1), mbin[:,1].reshape(-1,1)], axis=1) 
     e3 = np.concatenate([pbin[:, 2].reshape(-1,1), mbin[:,2].reshape(-1,1)], axis=1)   
     e4 = np.concatenate([pbin[:, 3].reshape(-1,1), mbin[:,3].reshape(-1,1)], axis=1)
         
-    return t, poes_alphas, e1, e2, e3, e4
+    return t, eq_alphas, e1, e2, e3, e4
 
 
 def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02', 
@@ -911,7 +930,7 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
         poes_binned (2d-array): (N, 4) array of energy-binned POES flux values for selected telescope.
         mCumulative (3d-array): (N, 11, 4) array of energy-integrated (wrt. POES' MEPED 4-energy bins)
                                  MagEIS electron flux, binned additionally by pitch-angle (11 bins). 
-        mageis_fedu_alpha (2d-array): (N, 11) array of local pitch-angle value for MagEIS FEDU, according
+        mageis_fedu_alpha (2d-array): (N, 11) array of local pitch-angle values for MagEIS FEDU, according
                                        to time range specified in time_array.
         
     """
