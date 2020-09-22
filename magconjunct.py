@@ -878,26 +878,34 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
             # - alpha_method = 2
             
         r1 = mageis_alphas * (np.pi/180.0)
+        print('r1:', r1,'\n')
+        
         for i in range(n_points):
+            print('Be_over_Bl:', Be_over_Bl[i])
             r2 = np.sqrt(Be_over_Bl[i]) * np.sin(r1)
+            print('r2:\n',r2,'\n')
             r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
+            print('r3:\n',r3,'\n')
             r3 = r3.reshape(1, 11)
             mageis_alpha_eq[i, :] = r3
                             
         #-- Find closest matching MagEIS pitch-angle bin.
         pEq = poes_alphas[0, 1]
-        alpha_diff = np.abs(mageis_alpha_eq[0, :] - pEq)
-        argMinEq = np.argmin(alpha_diff)
+        alpha_diff = np.abs(np.subtract(mageis_alpha_eq, pEq))
         
-        print(mbin_full) # Debug
+        argMinEq = np.empty(shape = n_points)
+        mbin = np.empty(shape=(n_points, 4))
+        mageis_eq = np.empty(shape = n_points)
         
-        mbin = mbin_full[:, argMinEq, :]
-        assert mbin.shape == (n_points, 4), "Fix mbin shape." # Debug
-        
-        print('mbin_full[0, :, :]:\n')  # Debug
-        print(mbin_full[0, :, :]) # Debug
-                
-        eq_alphas = np.concatenate([poes_alphas[:, 1].reshape(-1, 1), mageis_alpha_eq[:, argMinEq].reshape(-1,1)], axis=1)
+        for j in range(n_points):
+            argMinEq = np.argmin(alpha_diff[j, :])
+            mageis_eq[j] = mageis_alpha_eq[j, argMinEq]
+            mbin[j, :] = mbin_full[j, argMinEq, :]
+            
+        print('mageis local alpha: ', mageis_alphas)        
+        print('mageis eq alpha: ', mageis_eq)
+                        
+        eq_alphas = np.concatenate([poes_alphas[:, 1].reshape(-1, 1), mageis_eq.reshape(-1,1)], axis=1)
         
         #-- Map those equatorial values to the corresponding binned data.
             # -- Get pitch angle index of closest matching MagEIS eq value to POES eq value
