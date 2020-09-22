@@ -876,16 +876,14 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
         
         # Convert to equatorial values
             # - alpha_method = 2
-        for i in range(n_points):
-            
-            try: 
-                r1 = mageis_alphas[i, :] * (np.pi/180.0) # Convert alpha values in deg to radians. Result is a row vector.
-            except:
-                print(mageis_alphas.shape)
-            r2 = np.sqrt(Be_over_Bl[i]) * np.sin(r1)
-            r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
-            mageis_alpha_eq[i, :] = r3
-                    
+        
+        r1 = mageis_alphas * (np.pi/180.0)
+        r2 = np.sqrt(Be_over_Bl[i]) * np.sin(r1)
+        r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
+        r3 = r3.reshape(1, 11)
+        
+        mageis_alpha_eq = np.repeat(r3, repeats = n_points, axis=0) 
+                            
         #-- Find closest matching MagEIS pitch-angle bin.
         pEq = poes_alphas[0, 1]
         alpha_diff = np.abs(mageis_alpha_eq[0, :] - pEq)
@@ -937,8 +935,8 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
         poes_binned (2d-array): (N, 4) array of energy-binned POES flux values for selected telescope.
         mCumulative (3d-array): (N, 11, 4) array of energy-integrated (wrt. POES' MEPED 4-energy bins)
                                  MagEIS electron flux, binned additionally by pitch-angle (11 bins). 
-        mageis_fedu_alpha (2d-array): (N, 11) array of local pitch-angle values for MagEIS FEDU, according
-                                       to time range specified in time_array.
+        mageis_fedu_alpha (1d-array):  Array of 11 local pitch-angle values for MagEIS
+                                       FEDU, according to time range specified in time_array.
         
     """
     
@@ -1019,7 +1017,7 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
     fedu_en = mageis_data[2]
     alphas = mageis_data[3]
     
-    mageis_fedu_alpha = np.repeat(alphas, repeats = N_points, axis=0) # (OUTPUT)
+    mageis_fedu_alpha = alphas # (OUTPUT)
     
     # For each MagEIS conjunction point
     for t in range(N_points):
