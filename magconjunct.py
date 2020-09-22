@@ -11,6 +11,9 @@ Functions:
 - plotConjunct
 
 Last updated: 
+21 September 2020: 
+- Finished revisions compare_flux and compare_all_flux
+
 14 September 2020: 
 - compare_all_flux and compare_flux updates to get matching equatorial pitch angle values. 
 
