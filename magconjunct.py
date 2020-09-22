@@ -869,31 +869,35 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
             poes_alphas = np.repeat(poes_alphas, repeats = n_points, axis = 0)
         
         # (N, 11) array of MagEIS pitch angle bins (equatorial values)
-        mageis_alpha_eq = np.zeros(shape = mageis_alphas.shape)
+        mageis_alpha_eq = np.zeros(shape = (n_points, 11))
         
         # Beq/Blocal
         Be_over_Bl = [1.0/n for n in mageis_BoverBeq]
         
         # Convert to equatorial values
             # - alpha_method = 2
-        
+            
         r1 = mageis_alphas * (np.pi/180.0)
-        r2 = np.sqrt(Be_over_Bl[i]) * np.sin(r1)
-        r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
-        r3 = r3.reshape(1, 11)
-        
-        mageis_alpha_eq = np.repeat(r3, repeats = n_points, axis=0) 
+        for i in range(n_points):
+            r2 = np.sqrt(Be_over_Bl[i]) * np.sin(r1)
+            r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
+            r3 = r3.reshape(1, 11)
+            mageis_alpha_eq[i, :] = r3
                             
         #-- Find closest matching MagEIS pitch-angle bin.
         pEq = poes_alphas[0, 1]
         alpha_diff = np.abs(mageis_alpha_eq[0, :] - pEq)
         argMinEq = np.argmin(alpha_diff)
-        matchEq = mageis_alpha_eq[:, argMin]
         
-        mbin = mbin[:, argMinEq, :]
+        print(mbin_full) # Debug
+        
+        mbin = mbin_full[:, argMinEq, :]
         assert mbin.shape == (n_points, 4), "Fix mbin shape." # Debug
         
-        eq_alphas = np.concatenate(poes_alphas[:, 1], mageis_alphas_eq[:, argMinEq], axis=1)
+        print('mbin_full[0, :, :]:\n')  # Debug
+        print(mbin_full[0, :, :]) # Debug
+                
+        eq_alphas = np.concatenate([poes_alphas[:, 1].reshape(-1, 1), mageis_alpha_eq[:, argMinEq].reshape(-1,1)], axis=1)
         
         #-- Map those equatorial values to the corresponding binned data.
             # -- Get pitch angle index of closest matching MagEIS eq value to POES eq value
