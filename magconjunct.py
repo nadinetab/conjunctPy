@@ -720,7 +720,7 @@ def compare_all_flux(dfConjunct, l_min = 3.0,
             assert 'POES_ALPHA_EQ_0' in df_reduced.columns, "{'POES_ALPHA_0', 'POES_ALPHA_EQ_0'} are required as columns within dfConjunct if poes_telescope = 'tel0' and low_pitch_avg = False."
             mepAlphas = df_reduced[['POES_ALPHA_0', 'POES_ALPHA_EQ_0']].values
                 
-        mageisB_Beq = df['MAGEIS_BoverBeq'].values
+        mageisB_Beq = df_reduced['MAGEIS_BoverBeq'].values
     
     zipped_params = zip(df_reduced['mageis_pts'].values, 
                         df_reduced['POES_DT'].values,
@@ -877,7 +877,11 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
         # Convert to equatorial values
             # - alpha_method = 2
         for i in range(n_points):
-            r1 = mageis_alphas[i, :] * (np.pi/180.0) # Convert alpha values in deg to radians. Result is a row vector.
+            
+            try: 
+                r1 = mageis_alphas[i, :] * (np.pi/180.0) # Convert alpha values in deg to radians. Result is a row vector.
+            except:
+                print(mageis_alphas.shape)
             r2 = np.sqrt(Be_over_Bl[i]) * np.sin(r1)
             r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
             mageis_alpha_eq[i, :] = r3
@@ -888,7 +892,7 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
         argMinEq = np.argmin(alpha_diff)
         matchEq = mageis_alpha_eq[:, argMin]
         
-        mbin = [:, argMinEq, :]
+        mbin = mbin[:, argMinEq, :]
         assert mbin.shape == (n_points, 4), "Fix mbin shape." # Debug
         
         eq_alphas = np.concatenate(poes_alphas[:, 1], mageis_alphas_eq[:, argMinEq], axis=1)
@@ -1015,7 +1019,7 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
     fedu_en = mageis_data[2]
     alphas = mageis_data[3]
     
-    mageis_fedu_alpha = alphas # (OUTPUT)
+    mageis_fedu_alpha = np.repeat(alphas, repeats = N_points, axis=0) # (OUTPUT)
     
     # For each MagEIS conjunction point
     for t in range(N_points):
