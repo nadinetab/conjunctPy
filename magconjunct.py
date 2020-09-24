@@ -11,7 +11,7 @@ Functions:
 - plotConjunct
 
 Last updated: 
-21 September 2020: 
+21-24 September 2020: 
 - Finished revisions compare_flux and compare_all_flux
 
 14 September 2020: 
@@ -839,10 +839,7 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
                                                       poesTel = poes_tel) 
     n_points = len(mageis_conj_list)
     assert n_points == mbin_full.shape[0], "Check n_points."
-    
-    # Debug
-    assert n_points < 3, "Check n_points = len(mageis_conj_list)"
-    
+        
     # One more processing step for MagEIS flux: average over certain pitch angles
     if lowPitchAngleAvg: 
         mbin = []
