@@ -847,7 +847,6 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
     if lowPitchAngleAvg: 
         mbin = []
         
-        
         for n in range(mbin_full.shape[0]):
             mbin_n = [np.nanmean(mbin_full[n, [0, -1], col]) for col in range(4)]
             mbin.append(mbin_n)
@@ -881,11 +880,11 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
         print('r1:', r1,'\n')
         
         for i in range(n_points):
-            print('Be_over_Bl:', Be_over_Bl[i])
+            print('Be_over_Bl:', Be_over_Bl[i]) # Debug
             r2 = np.sqrt(Be_over_Bl[i]) * np.sin(r1)
-            print('r2:\n',r2,'\n')
+            print('r2:\n',r2,'\n') # Debug
             r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
-            print('r3:\n',r3,'\n')
+            print('r3:\n',r3,'\n') # Debug
             r3 = r3.reshape(1, 11)
             mageis_alpha_eq[i, :] = r3
                             
@@ -893,18 +892,27 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
         pEq = poes_alphas[0, 1]
         alpha_diff = np.abs(np.subtract(mageis_alpha_eq, pEq))
         
-        argMinEq = np.empty(shape = n_points)
+#         argMinEq = np.empty(shape = n_points)
+#         argMinEq2 = np.empty(shape = n_points)
         mbin = np.empty(shape=(n_points, 4))
         mageis_eq = np.empty(shape = n_points)
         
         for j in range(n_points):
             argMinEq = np.argmin(alpha_diff[j, :])
             mageis_eq[j] = mageis_alpha_eq[j, argMinEq]
-            mbin[j, :] = mbin_full[j, argMinEq, :]
             
-        print('mageis local alpha: ', mageis_alphas)        
-        print('mageis eq alpha: ', mageis_eq)
-                        
+            if argMinEq != 5 and np.isclose(mageis_alpha_eq[j, 10 - argMinEq], mageis_eq[j], atol = 0.5):
+                argMinEq2 = 10 - argMinEq
+                mbin[j, :] = np.nanmean(mbin_full[j, [argMinEq, argMinEq2], :], axis = 0)
+            else:        
+                mbin[j, :] = mbin_full[j, argMinEq, :]
+        
+        print('mageis local alpha: ', mageis_alphas)     # Debug   
+        print('mageis eq alpha: ', mageis_eq)       # Debug
+        
+        # Debug
+        assert mbin.shape == (n_points, 4)
+        
         eq_alphas = np.concatenate([poes_alphas[:, 1].reshape(-1, 1), mageis_eq.reshape(-1,1)], axis=1)
         
         #-- Map those equatorial values to the corresponding binned data.
