@@ -877,14 +877,14 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
             # - alpha_method = 2
             
         r1 = mageis_alphas * (np.pi/180.0)
-        print('r1:', r1,'\n')
+#         print('r1:', r1,'\n')
         
         for i in range(n_points):
-            print('Be_over_Bl:', Be_over_Bl[i]) # Debug
+#             print('Be_over_Bl:', Be_over_Bl[i]) # Debug
             r2 = np.sqrt(Be_over_Bl[i]) * np.sin(r1)
-            print('r2:\n',r2,'\n') # Debug
+#             print('r2:\n',r2,'\n') # Debug
             r3 = np.arcsin(r2) * (180.0 / np.pi) # Convert back to degrees
-            print('r3:\n',r3,'\n') # Debug
+#             print('r3:\n',r3,'\n') # Debug
             r3 = r3.reshape(1, 11)
             mageis_alpha_eq[i, :] = r3
                             
@@ -906,9 +906,17 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
                 mbin[j, :] = np.nanmean(mbin_full[j, [argMinEq, argMinEq2], :], axis = 0)
             else:        
                 mbin[j, :] = mbin_full[j, argMinEq, :]
+                
+            if argMinEq > 0 and argMinEq < 10:
+                print('argMinEq: ', argMinEq) # Debug
+                print('mbin_full with the two cols:', mbin_full[j, [argMinEq, argMinEq2], :]) # Debug
+
+                print('\nAfter averaging: \n', mbin[j, :]) # Debug
+
         
-        print('mageis local alpha: ', mageis_alphas)     # Debug   
-        print('mageis eq alpha: ', mageis_eq)       # Debug
+#         print('mageis local alpha: ', mageis_alphas)     # Debug  
+#         print('POES eq alpha: ', pEq) # Debug
+#         print('matching mageis eq alpha: ', mageis_eq)       # Debug
         
         # Debug
         assert mbin.shape == (n_points, 4)
