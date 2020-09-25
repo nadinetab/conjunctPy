@@ -995,8 +995,18 @@ def get_both_flux(dt_list, poes_dt, rb_sc, p_sc='m02',
                              read_vars = full_labels, 
                              null_vals = poes_fill, 
                              filterL = True)[0]
-    matching_pidx = np.where(poes_data[0] == dtime)[0][0]
-    pfluxes = [f[matching_pidx] for f in poes_data[1:]]
+    boolMatch = True
+    try:
+        matching_pidx = np.where(poes_data[0] == dtime)[0][0]
+    except IndexError:
+        boolMatch = False
+        print('Cannot find POES conjunction timestamp: ', dtime)
+        pass
+    
+    if boolMatch:
+        pfluxes = [f[matching_pidx] for f in poes_data[1:]]
+    else:
+        pfluxes = [np.array([np.nan]) for i in range(len(full_labels))]
 
     # Return a dictionary with meped flux across tel0 and tel90,
     # and all energy bins, and with datetime, tel0 and tel90 pitch angle information
