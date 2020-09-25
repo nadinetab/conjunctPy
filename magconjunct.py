@@ -901,28 +901,20 @@ def compare_flux(mageis_conj_list, poes_time, rbsc, meped_alphas = None, mageis_
             if argMinEq != 5 and np.isclose(mageis_alpha_eq[j, 10 - argMinEq], mageis_eq[j], atol = 0.5):
                 argMinEq2 = 10 - argMinEq
                 mbin[j, :] = np.nanmean(mbin_full[j, [argMinEq, argMinEq2], :], axis = 0)
+                if argMinEq > 0 and argMinEq < 10:
+                    print('argMinEq: ', argMinEq) # Debug
+                    print('mbin_full with the two cols:', mbin_full[j, [argMinEq, argMinEq2], :]) # Debug
+
+                    print('\nAfter averaging: \n', mbin[j, :]) # Debug
+
             else:        
                 mbin[j, :] = mbin_full[j, argMinEq, :]
                 
-            if argMinEq > 0 and argMinEq < 10:
-                print('argMinEq: ', argMinEq) # Debug
-                print('mbin_full with the two cols:', mbin_full[j, [argMinEq, argMinEq2], :]) # Debug
-
-                print('\nAfter averaging: \n', mbin[j, :]) # Debug
-
-        
-#         print('mageis local alpha: ', mageis_alphas)     # Debug  
-#         print('POES eq alpha: ', pEq) # Debug
-#         print('matching mageis eq alpha: ', mageis_eq)       # Debug
-        
         # Debug
         assert mbin.shape == (n_points, 4)
         
         eq_alphas = np.concatenate([poes_alphas[:, 1].reshape(-1, 1), mageis_eq.reshape(-1,1)], axis=1)
         
-        #-- Map those equatorial values to the corresponding binned data.
-            # -- Get pitch angle index of closest matching MagEIS eq value to POES eq value
-            # -- Get mbin_full[idx, :], where the first dim. corr. to pitch angles, the second to energy bins.
     
     e1 = np.concatenate([pbin[:, 0].reshape(-1,1), mbin[:,0].reshape(-1,1)], axis=1)   
     e2 = np.concatenate([pbin[:, 1].reshape(-1,1), mbin[:,1].reshape(-1,1)], axis=1) 
