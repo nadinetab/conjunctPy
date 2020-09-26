@@ -489,6 +489,13 @@ def findConjunct(times, time_tol, l_tol, mlt_tol,
 
 
 def colConversion(strInput, date_type = False):
+    """
+        Helper function for readConjunct(). The data types for the columns
+        within the findConjunct output is not preserved during export as a CSV files.
+        When the CSV files are read using pandas.read_csv(), the columns containing
+        lists as elements are regarded as type string instead of type list. 
+        This function converts a list of type string into that of type list.
+    """
     
     listOut = strInput.replace('\'', '').replace('[','').replace(']','')
     listOut = listOut.split(' ')
@@ -517,7 +524,7 @@ def readConjunct(cfile):
                         index_col = 0, header = 0,
                         dtype=col_dtypes, parse_dates = ['POES_DT'])
     
-    tread['mageis_pts'] = np.array([colConversion(i, date_type=True) for i in tread['mageis_pts'].values])  
+    tread['mageis_pts'] = [colConversion(i, date_type=True) for i in tread['mageis_pts'].values]  
     
     commonfunc = lambda x: x.replace('\'', '').replace('[','').replace(']','')
     
