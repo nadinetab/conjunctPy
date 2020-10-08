@@ -791,7 +791,19 @@ def compare_all_flux(dfConjunct, l_min = 3.0,
         elif not savename.endswith('.csv'):
             savename += '.csv'
         df_flux.to_csv(savename)
-                                
+                      
+         # Add file properties to log (untested)
+        log_name = 'compareallflux_log.csv'
+        logdf = pd.DataFrame(data={'FILE_NAME':savename, 
+                                   'START_DATE':t[0,0].date, 
+                                   'END_DATE':t[-1,0].date,
+                                   'NUM_CONJUNCTIONS':len(df_flux),
+                                   'MIN_L':l_min,
+                                   'LOW_PITCH_AVG':low_pitch_avg,
+                                   'POES_TELESCOPE':poes_telescope}, index = [0])
+        with open(log_name, 'a') as f:
+            logdf.to_csv(f, header = f.tell()==0)
+                 
     return df_flux
 
 
